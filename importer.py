@@ -6,6 +6,10 @@ WORKING_DIR = os.path.dirname(__file__)
 PROCESSED_RADIO_AMOUNT = 14
 TOTAL_RADIO_AMOUNT = 30
 TEETH_AMOUNT = 8
+# TEETH_MIRROR_POSITION = {1: 4, 4: 1,
+#                          2: 3, 3: 2,
+#                          5: 8, 8: 5,
+#                          6: 7, 7: 6}
 
 RADIO_DIR = "/Radiographs/"
 RADIO_EXTRA_DIR = "extra/"
@@ -35,9 +39,9 @@ def import_landmarks(image, tooth_number, mirrored=False):
     temp_x = 0
     for index, line in enumerate(input_file):
         if index % 2 == 0:
-            temp_x = int(float(line))
+            temp_x = float(line)
         else:
-            landmarks.append((temp_x, int(float(line))))
+            landmarks.append((temp_x, float(line)))
     return landmarks
 
 
