@@ -1,27 +1,8 @@
 import cv2
 import os
+from config import *
 
 WORKING_DIR = os.path.dirname(__file__)
-
-PROCESSED_RADIO_AMOUNT = 14
-TOTAL_RADIO_AMOUNT = 30
-TEETH_AMOUNT = 8
-# TEETH_MIRROR_POSITION = {1: 4, 4: 1,
-#                          2: 3, 3: 2,
-#                          5: 8, 8: 5,
-#                          6: 7, 7: 6}
-
-RADIO_DIR = "/Radiographs/"
-RADIO_EXTRA_DIR = "extra/"
-RADIO_FILE_TEMPLATE = "{image}.tif"
-
-LANDMARK_DIR = "/Landmarks/"
-LANDMARK_DEFAULT_DIR = "original/"
-LANDMARK_MIRRORED_DIR = "mirrored/"
-LANDMARK_FILE_TEMPLATE = "landmarks{image}-{tooth_number}.txt"
-
-SEGMENT_DIR = "/Segmentations/"
-SEGMENT_FILE_TEMPLATE = "{image}-{tooth_number}.png"
 
 
 def import_landmarks(image, tooth_number, mirrored=False):
@@ -45,7 +26,7 @@ def import_landmarks(image, tooth_number, mirrored=False):
     return landmarks
 
 
-def import_all_landmarks(image):
+def import_landmarks_for_image(image):
     original_landmarks = []
     mirrored_landmarks = []
     for tooth_number in range(1, TEETH_AMOUNT + 1):
@@ -94,7 +75,7 @@ def import_image(image):
     radiograph = import_radiograph(image)
     if image <= PROCESSED_RADIO_AMOUNT:
         segmentations = import_segmentations(image)
-        original_landmarks, mirrored_landmarks = import_all_landmarks(image)
+        original_landmarks, mirrored_landmarks = import_landmarks_for_image(image)
         result = {"radiograph": radiograph,
                   "segmentations": segmentations,
                   "original_landmarks": original_landmarks,
@@ -107,3 +88,10 @@ def import_image(image):
                   "mirrored_landmarks": None,
                   "full_data": False}
     return result
+
+
+def import_all_landmarks():
+    imported_landmarks = []
+    for image in range(1, PROCESSED_RADIO_AMOUNT + 1):
+        imported_landmarks.append(import_landmarks_for_image(image))
+    return imported_landmarks
