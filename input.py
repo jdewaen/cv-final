@@ -1,7 +1,5 @@
 import cv2
-import os
 from config import *
-
 
 
 def import_landmarks(image, tooth_number, mirrored=False):

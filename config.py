@@ -26,3 +26,9 @@ SEGMENT_FILE_TEMPLATE = "{image}-{tooth_number}.png"
 # Image output directory
 OUTPUT_DIR = "/output/"
 ALWAYS_SHOW_IMAGES = False
+
+# Radiography processing variables
+IMAGE_BIT_DEPTH = 256
+X_CROP_RATIO = 0.35
+Y_CROP_RATIO = 0.85
+PROCESSED_DIR = "/processed/"

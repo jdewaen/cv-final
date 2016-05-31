@@ -1,12 +1,12 @@
 import cv2
 import colorsys
 from config import *
-from importer import import_image
+from input import import_image
 import numpy as np
 
 
-def save_image(image, filename):
-    directory = WORKING_DIR + OUTPUT_DIR
+def save_image(image, filename, output_dir=OUTPUT_DIR):
+    directory = WORKING_DIR + output_dir
     filename += ".png"
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -73,3 +73,12 @@ def display_input(filename=None):
             cv2.imshow(str(image), cv2.resize(radiograph, (0, 0), fx=0.5, fy=0.5))
             cv2.waitKey()
             cv2.destroyWindow(str(image))
+
+
+def display_single_image(image, filename=None, scale=1):
+    if filename is not None:
+        save_image(image, filename)
+    if filename is None or ALWAYS_SHOW_IMAGES:
+        cv2.imshow('img', cv2.resize(image, (0, 0), fx=scale, fy=scale))
+        cv2.waitKey()
+        cv2.destroyWindow(str(image))
