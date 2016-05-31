@@ -2,7 +2,6 @@ import cv2
 import os
 from config import *
 
-WORKING_DIR = os.path.dirname(__file__)
 
 
 def import_landmarks(image, tooth_number, mirrored=False):

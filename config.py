@@ -1,3 +1,5 @@
+import os
+
 
 # General configuration variables
 PROCESSED_RADIO_AMOUNT = 14
@@ -8,6 +10,7 @@ TEETH_AMOUNT = 8
 USE_MIRRORED = True
 
 # Importing variables
+WORKING_DIR = os.path.dirname(__file__)
 RADIO_DIR = "/Radiographs/"
 RADIO_EXTRA_DIR = "extra/"
 RADIO_FILE_TEMPLATE = "{image}.tif"
@@ -19,3 +22,7 @@ LANDMARK_FILE_TEMPLATE = "landmarks{image}-{tooth_number}.txt"
 
 SEGMENT_DIR = "/Segmentations/"
 SEGMENT_FILE_TEMPLATE = "{image}-{tooth_number}.png"
+
+# Image output directory
+OUTPUT_DIR = "/output/"
+ALWAYS_SHOW_IMAGES = False
