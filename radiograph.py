@@ -33,14 +33,14 @@ def crop(image, x_ratio, y_ratio):
     x_offset = width * (1 - x_ratio) / 2
     y_offset = height * (1 - y_ratio) / 2
     new_image = image[y_offset:height-y_offset, x_offset:width-x_offset]
-    return new_image
+    return new_image, (y_offset, x_offset)
 
 
 def sobel(img):
 
     # img = cv2.blur(img, (5, 5))
     img = homomorphic_filter(img)
-    img = cv2.blur(img, (3, 3))
+    # img = cv2.blur(img, (3, 3))
 
     # img = normalize_histogram(img, True)
     # img = np.uint8(img)
@@ -60,9 +60,36 @@ def sobel(img):
     # result[:, :] = result[:, :] + (IMAGE_BIT_DEPTH/2)
     # result = np.uint8(result)
 
-    result = cv2.Canny(img, 30, 80)
-    # result = normalize_histogram(result, True)
+    sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=3)
+    sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=3)
+    result = np.sqrt(np.square(sobelx) + np.square(sobely))
+    result[:, :] = abs(result[:, :])
+    result = np.uint8(result)
+
+    # result = cv2.Canny(img, 25, 45)
+    # img = normalize_histogram(img, True)
     return result
+
+def sobel_only(img):
+    sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=3)
+    sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=3)
+    result = np.sqrt(np.square(sobelx) + np.square(sobely))
+    vects = np.zeros((img.shape[0], img.shape[1], 2))
+    vects[:, :, 0] = sobelx
+    vects[:, :, 1] = sobely
+    # test[:, :] /= np.pi * 2
+    # test[:, :] += 0.5
+    # test[:, :] *= IMAGE_BIT_DEPTH - 1
+    # bla = np.zeros((test.shape[0], test.shape[1], 3))
+    # for y, row in enumerate(test):
+    #     for x, val in enumerate(row):
+    #         res = result[y, x] / 255
+    #         bla[y, x] = output.hsv_to_bgr(val, 1, res)
+    # result[:, :] = abs(result[:, :])
+    # result = normalize_histogram(np.uint8(result), True)
+    result = np.uint8(result)
+    return result, vects
+
 
 def homo_3(img):
     return
@@ -108,15 +135,21 @@ def homomorphic_filter(img):
     Ihmf2 = np.array(255 * Ihmf, dtype="uint8")
     return Ihmf2
 
+
+
+
 def process_radiographs():
     for image_nb in range(1, PROCESSED_RADIO_AMOUNT + 1):
-        raw_image = input.import_radiograph(image_nb)
-        mono_image = raw_image[:, :, 0]
-        cropped_image = crop(mono_image, X_CROP_RATIO, Y_CROP_RATIO)
-        downsampled = cv2.resize(cropped_image, (0, 0), fx=0.25, fy=0.25)
-        # output.display_single_image(cropped_image, scale=0.5)
-        result = sobel(downsampled)
-        output.save_image(result, "proc-"+str(image_nb), PROCESSED_DIR + "vs/")
+        # raw_image = input.import_radiograph(image_nb)
+        # mono_image = raw_image[:, :, 0]
+        # cropped_image, shift = crop(mono_image, X_CROP_RATIO, Y_CROP_RATIO)
+        # downsampled = cv2.resize(cropped_image, (0, 0), fx=0.5, fy=0.5)
+        # # output.display_single_image(cropped_image, scale=0.5)
+        # result = sobel_only(downsampled)
+        # canny = cv2.imread("processed/5-5 blur 15-20 canny/proc.15.20-" + str(image_nb) + ".png",-1)
+        pass
+        # canny = sobel_only(full[:, :, 0])
+        # output.save_image(result, "proc-"+str(image_nb), PROCESSED_DIR + "cont/")
         # homomorphic_image = homomorphic_filter(cropped_image)
         # processed_image = normalize_histogram(homomorphic_image)
         # output.display_single_image(processed_image, scale=0.5)
@@ -124,3 +157,4 @@ def process_radiographs():
         # output.display_single_image(processed_image, scale=0.5)
 
         # output.save_image(processed_image,"norm-"+str(image_nb), PROCESSED_DIR)
+

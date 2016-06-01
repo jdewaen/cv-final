@@ -19,13 +19,9 @@ def reconstruct(w, y, mu, raw=False):
     raw_result = mu + np.dot(w, y)
     if raw:
         return raw_result
-    result = []
-    temp_x = 0
-    for index, value in enumerate(raw_result):
-        if index % 2 == 0:
-            temp_x = value
-        else:
-            result.append((temp_x, value))
+    result = np.zeros((len(raw_result)/2, 2))
+    for index in range(0, len(raw_result)/2):
+            result[index] = [raw_result[2*index], raw_result[2*index + 1]]
     return result
 
 
