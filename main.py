@@ -8,6 +8,8 @@ from output import *
 import pca
 import time
 from config import *
+from radiograph import sobel
+
 cx = 0
 cy = 0
 tn = 0
@@ -112,8 +114,8 @@ def fix_shape(points, pca_data, stds):
     return result
 
 
-def calculate_direction(vects, prev, next, matrix_center, d, nbh, point):
-    perp_dir = 1  # INPUT IS CCW, points inwards if == 1
+def calculate_direction(vects, prev, next, matrix_center, d, nbh, point, bla):
+    perp_dir = -1  # INPUT IS CCW, points inwards if == 1
     #
     # if point == 12:
     #     display_single_image(nbh)
@@ -157,21 +159,29 @@ def calculate_direction(vects, prev, next, matrix_center, d, nbh, point):
 
     perp = (perp_prev + perp_next) / 2
 
+
+    # sobel vectors
     norm = np.linalg.norm(vects, axis=2)
     zeros = np.uint8(norm == np.zeros((2 * d + 1, 2 * d + 1)))  # all places where the norm is zero are one here
     norm += zeros  # prevent division by zero
     vects[:, :, 0] = vects[:, :, 0] / norm
     vects[:, :, 1] = vects[:, :, 1] / norm
 
-    result = np.multiply(perp[:, :, 0], vects[:, :, 0]) + np.multiply(perp[:, :, 1], vects[:, :, 1])
+    result = (np.multiply(perp_prev[:, :, 0], vects[:, :, 0]) + np.multiply(perp_prev[:, :, 1], vects[:, :, 1]))
+    # result = np.multiply(result)
+    # test1 = radiograph.generate_gradient_from_vectors(nbh, perp_prev)
+    # test2 = radiograph.generate_gradient_from_vectors(nbh, vects)
+    # sobel = cv2.cvtColor(nbh,cv2.COLOR_GRAY2BGR)
+    # resulttest = cv2.cvtColor(np.uint8(np.multiply(nbh, result + np.ones(result.shape))), cv2.COLOR_GRAY2BGR)
+    # display_single_image(cv2.resize(np.hstack([resulttest, test1, test2]), (0, 0),fx=10,fy=10))
     return result
 
 
 def fit(sobel, points, pca_data, stds, delta, vects, nbh):
     d = 10
-    alpha = 0.2  # tension 0.2
+    alpha = 0.3  # tension 0.2
     beta = 0.3  # stiffness 0.3
-    gamma = 5  # sensitivity
+    gamma = 3  # sensitivity
     epsilon = 400  # pick right line
     # delta = 0.3 # shape
     new_points = np.zeros(points.shape)
@@ -180,13 +190,14 @@ def fit(sobel, points, pca_data, stds, delta, vects, nbh):
     avg_dist = average_dist(points)
     cost = np.zeros(4)
     for index, point in enumerate(points):
+        print(index)
         x, y = point
         if index == len(points) - 1:
             next_point = points[0]
         else:
             next_point = points[index + 1]
         # start = time.clock()
-        direction_cost = calculate_direction(vects[y-d:y+d+1, x-d:x+d+1], last_point, next_point, point, d, nbh[y-d:y+d+1, x-d:x+d+1], index)
+        direction_cost = calculate_direction(vects[y-d:y+d+1, x-d:x+d+1], last_point, next_point, point, d, sobel[y-d:y+d+1, x-d:x+d+1], index, nbh[y-d:y+d+1, x-d:x+d+1])
         # print("dir: " + str(time.clock() - start))
         # start = time.clock()
         # ext_cost = - gamma * sobel[y-d:y+d+1, x-d:x+d+1]
@@ -251,7 +262,7 @@ def main():
     #     display_side_by_side_landmarks(pca.vary_pca_parameter(1, stds[tn], pca_data[tn]), "modelvar-"+str(tn) + "-1")
 
     crop_offsets, sobel_vectors = radiograph.process_radiographs()
-    tn = 1
+    tn = 0
     imn = 1
     while tn < 8:
         homo_image = cv2.imread(HOMOMORPHIC_DIR + str(imn) + ".png")
@@ -265,7 +276,7 @@ def main():
         # eigval, eigvect, mu = pca_data[0]
         # default = np.zeros(len(eigvect[0]))
         # points = pca.reconstruct(eigvect, default, mu)
-        # cx, cy = (189, 436) # 1
+        # cx, cy = (162, 530) # 1
         # cx, cy = (295, 385) # 2
         # cx, cy = (211, 510) # 4
         points[:] *= 90
@@ -279,12 +290,12 @@ def main():
         cv2.waitKey()
         delta = 0
         ind = 0
-        while True:
-        # while ind < 20:
+        # while True:
+        while ind < 10:
             ind += 1
-            points = fit(sobel, points, pca_data[tn], stds[tn], delta, sobel_vectors[imn], gradients)
-            update(homo_image, gradients, points, "test")
-            cv2.waitKey()
+            points = fit(sobel, points, pca_data[tn], stds[tn], delta, sobel_vectors[imn-1], gradients)
+            # update(homo_image, gradients, points, "test")
+            # cv2.waitKey()
             # if delta < 0.3:
             #     delta += 0.03
             # if ind%15 == 0:
