@@ -6,6 +6,7 @@ import math
 def normalize_landmarks(input_landmarks_set):
     result_set = []
     scales = []
+    angles = []
     for input_landmarks in input_landmarks_set:
         # normalize position
         mean_x = 0
@@ -41,10 +42,11 @@ def normalize_landmarks(input_landmarks_set):
             ref = result_set[0]
             norm_landmarks, angle = calculate_landmark_rotation(ref, scaled_landmarks)
             result_set.append(norm_landmarks)
+            angles.append(angle)
     print(np.mean(scales))
     print(np.std(scales))
     print("\n")
-    return result_set
+    return result_set, np.mean(scales), np.std(scales), np.mean(angles), np.std(angles)
 
 
 def normalize_landmark_with_data(rot_reference, input_landmarks):
@@ -82,10 +84,10 @@ def normalize_landmark_with_data(rot_reference, input_landmarks):
 
 def restore_landmarks(landmarks, translation, scale, angle):
     result = []
+    angle *= -1
+    cos_angle = math.cos(angle)
+    sin_angle = math.sin(angle)
     for landmark in landmarks:
-        angle *= -1
-        cos_angle = math.cos(angle)
-        sin_angle = math.sin(angle)
         new_landmark = np.array([landmark[0] * cos_angle - landmark[1] * sin_angle,
                         landmark[0] * sin_angle + landmark[1] * cos_angle])
 
@@ -103,14 +105,19 @@ def calculate_landmark_rotation(ref_landmarks, other_landmarks):
         top += other[0]*ref[1] - other[1]*ref[0]
         bottom += other[0]*ref[0] + other[1]*ref[1]
     angle = math.atan(top/bottom)
+    result_landmarks = rotate_landmarks(other_landmarks, angle)
+    return result_landmarks, angle
+
+
+def rotate_landmarks(landmarks, angle):
     cos_angle = math.cos(angle)
     sin_angle = math.sin(angle)
     result_landmarks = []
-    for cur in other_landmarks:
+    for cur in landmarks:
         new_x = cur[0] * cos_angle - cur[1] * sin_angle
         new_y = cur[0] * sin_angle + cur[1] * cos_angle
         result_landmarks.append((new_x, new_y))
-    return result_landmarks, angle
+    return result_landmarks
 
 
 def group_landmarks_by_tooth(input_data):
@@ -130,7 +137,11 @@ def group_landmarks_by_tooth(input_data):
 def process_landmarks(landmarks_input):
     grouped_landmarks = group_landmarks_by_tooth(landmarks_input)
     normalized_landmarks = []
+    scale_stats = []
+    angle_stats = []
     for tooth_group in grouped_landmarks:
-        lm = normalize_landmarks(tooth_group)
+        lm, scale_mean, scale_std, angle_mean, angle_std = normalize_landmarks(tooth_group)
         normalized_landmarks.append(lm)
-    return normalized_landmarks
+        scale_stats.append((scale_mean, scale_std))
+        angle_stats.append((angle_mean, angle_std))
+    return normalized_landmarks, scale_stats, angle_stats

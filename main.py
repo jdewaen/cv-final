@@ -21,12 +21,15 @@ def onclick(event, x, y, flags, param):
         cy = y
 
 
-def update(homo_image, gradients, lm, window):
+def update(homo_image, gradients, all_points, window):
     homo_copy = np.copy(homo_image)
     gradients_copy = np.copy(gradients)
-    for point in lm:
-        cv2.circle(homo_copy, (int(point[0]), int(point[1])), 1, (0, 0, 255), 2)
-        cv2.circle(gradients_copy, (int(point[0]), int(point[1])), 1, (0, 0, 255), 2)
+    hue = 0
+    for index, point_set in enumerate(all_points):
+        for point in point_set:
+            cv2.circle(homo_copy, (int(point[0]), int(point[1])), 1, hsv_to_bgr(hue, 1, 1), 2)
+            cv2.circle(gradients_copy, (int(point[0]), int(point[1])), 1, hsv_to_bgr(hue, 1, 1), 2)
+        hue += 1.0 / (len(all_points) + 1)
     cv2.imshow(window, np.hstack([homo_copy, gradients_copy]))
 
 def point_dist(point1, point2):
@@ -86,6 +89,18 @@ def curvature(last_point, next_point, matrix_center, d):
 #             result[y_i, x_i] = np.linalg.norm(vect)
 #     return result
 
+def get_approx_scale(tn):
+    scale = 90
+    if tn == 0 or tn == 3:
+        scale = 90
+    if tn == 1 or tn == 2:
+        scale = 100
+    if tn == 4 or tn == 7:
+        scale = 85
+    if tn == 5 or tn == 6:
+        scale = 80
+    return scale
+
 def fix_shape(points, pca_data, stds):
     _, eigv, mu = pca_data
     default = pca.reconstruct(eigv, np.zeros(len(eigv[0])), mu)
@@ -101,14 +116,7 @@ def fix_shape(points, pca_data, stds):
             fixed += 1
 
     result = pca.reconstruct(eigv, new_vec, mu)
-    if tn == 0 or tn == 3:
-        scale = 90
-    if tn == 1 or tn == 2:
-        scale = 100
-    if tn == 4 or tn == 7:
-        scale = 85
-    if tn == 5 or tn == 6:
-        scale = 80
+    scale = get_approx_scale(tn)
     result = landmarks.restore_landmarks(result, translation, scale, angle) # TODO: dont hardcode scale
     # print("fixed: " + str(fixed) + "\n")
     return result
@@ -180,17 +188,16 @@ def calculate_direction(vects, prev, next, matrix_center, d, nbh, point, bla):
 def fit(sobel, points, pca_data, stds, delta, vects, nbh):
     d = 10
     alpha = 0.3  # tension 0.2
-    beta = 0.3  # stiffness 0.3
+    beta = 0.5  # stiffness 0.3
     gamma = 3  # sensitivity
     epsilon = 400  # pick right line
-    # delta = 0.3 # shape
+    # delta = 1 # shape
     new_points = np.zeros(points.shape)
     cost_map = []
     last_point = points[-1]
     avg_dist = average_dist(points)
     cost = np.zeros(4)
     for index, point in enumerate(points):
-        print(index)
         x, y = point
         if index == len(points) - 1:
             next_point = points[0]
@@ -212,14 +219,15 @@ def fit(sobel, points, pca_data, stds, delta, vects, nbh):
         # start = time.clock()
 
         cost_map.append(curvature_cost + elastic_cost + ext_cost)
-        cost[0] += curvature_cost[d, d]
-        cost[1] += elastic_cost[d, d]
-        cost[2] += ext_cost[d, d]
-        cost[3] += direction_cost[d, d]
+        # cost[0] += curvature_cost[d, d]
+        # cost[1] += elastic_cost[d, d]
+        # cost[2] += ext_cost[d, d]
+        # cost[3] += direction_cost[d, d]
         # select point
         tl = point - [d, d]
         min_val = None
         min_point = None
+        cost = 0
         for y, row in enumerate(cost_map[index]):
             for x, value in enumerate(row):
                 if min_val is None or value < min_val:
@@ -227,14 +235,18 @@ def fit(sobel, points, pca_data, stds, delta, vects, nbh):
                     min_point = tl + [x, y]
         new_points[index] = min_point
         last_point = min_point
+        cost += min_val
         # print("oth: " + str(time.clock() - start))
-    print("curv: " + str(cost[0]) + "")
-    print("elas: " + str(cost[1]) + "")
-    print("exte: " + str(cost[2]) + "")
-    print("dirc: " + str(cost[3]) + "\n")
+    # print("curv: " + str(cost[0]) + "")
+    # print("elas: " + str(cost[1]) + "")
+    # print("exte: " + str(cost[2]) + "")
+    # print("dirc: " + str(cost[3]) + "\n")
+    print("cost: " + str(cost) + "\n")
     new_points = (1 - delta)*new_points + delta*fix_shape(new_points, pca_data, stds)
 
-    return new_points
+    return new_points, cost
+
+# calculate_cost()
 
 
 def main():
@@ -246,7 +258,7 @@ def main():
     # display_input("input")
 
     # normalize landmarks
-    lms = landmarks.process_landmarks(raw_landmarks)
+    lms, scale_stats, angle_stats = landmarks.process_landmarks(raw_landmarks)
 
     # show normalized landmarks
     # display_all_overlaid_landmarks(landmarks, "landmarks")
@@ -272,37 +284,77 @@ def main():
         cv2.imshow("test", homo_image)
         cv2.setMouseCallback("test", onclick)
         cv2.waitKey()
-        points = pca.vary_pca_parameter(0, stds[tn], pca_data[tn])[1]
+        points_raw = pca.vary_pca_parameter(0, stds[tn], pca_data[tn])
+        points = np.zeros((9, len(points_raw[0]), len(points_raw[0][0])))
+        points[0] = landmarks.rotate_landmarks(points_raw[0], angle_stats[tn][0] - 3*angle_stats[tn][1])
+        points[1] = landmarks.rotate_landmarks(points_raw[0], angle_stats[tn][0])
+        points[2] = landmarks.rotate_landmarks(points_raw[0], angle_stats[tn][0] + 3*angle_stats[tn][1])
+        points[3] = landmarks.rotate_landmarks(points_raw[1], angle_stats[tn][0] - 3*angle_stats[tn][1])
+        points[4] = landmarks.rotate_landmarks(points_raw[1], angle_stats[tn][0])
+        points[5] = landmarks.rotate_landmarks(points_raw[1], angle_stats[tn][0] + 3*angle_stats[tn][1])
+        points[6] = landmarks.rotate_landmarks(points_raw[2], angle_stats[tn][0] - 3*angle_stats[tn][1])
+        points[7] = landmarks.rotate_landmarks(points_raw[2], angle_stats[tn][0])
+        points[8] = landmarks.rotate_landmarks(points_raw[2], angle_stats[tn][0] + 3*angle_stats[tn][1])
         # eigval, eigvect, mu = pca_data[0]
         # default = np.zeros(len(eigvect[0]))
         # points = pca.reconstruct(eigvect, default, mu)
         # cx, cy = (162, 530) # 1
         # cx, cy = (295, 385) # 2
         # cx, cy = (211, 510) # 4
-        points[:] *= 90
-        if tn < 4:
-            y_start = max(points[:, 1])
-        else:
-            y_start = min(points[:, 1])
-        points[:] += (cx, cy - y_start)
+        points = np.multiply(points, get_approx_scale(tn))
+        # y_start = np.zeros(3)
+        for point_set in points:
+            if tn < 4:
+                point_set += (cx, cy - max(point_set[:, 1]))
+            else:
+                point_set += (cx, cy - min(point_set[:, 1]))
+        #
+        # if tn < 4:
+        #     y_start[0] = max(points[0, :, 1])
+        #     y_start[1] = max(points[1, :, 1])
+        #     y_start[2] = max(points[2, :, 1])
+        # else:
+        #     y_start[0] = min(points[0, :, 1])
+        #     y_start[1] = min(points[1, :, 1])
+        #     y_start[2] = min(points[2, :, 1])
+        # points[0] += (cx, cy - y_start[0])
+        # points[1] += (cx, cy - y_start[1])
+        # points[2] += (cx, cy - y_start[2])
         print(cx, cy)
         update(homo_image, gradients, points, "test")
         cv2.waitKey()
         delta = 0
         ind = 0
         # while True:
+        costs = np.zeros(9)
         while ind < 10:
             ind += 1
-            points = fit(sobel, points, pca_data[tn], stds[tn], delta, sobel_vectors[imn-1], gradients)
-            # update(homo_image, gradients, points, "test")
-            # cv2.waitKey()
-            # if delta < 0.3:
-            #     delta += 0.03
+            for index, point_set in enumerate(points):
+                points[index], costs[index] = fit(sobel, point_set, pca_data[tn], stds[tn], delta, sobel_vectors[imn-1], gradients)
+            # points[1], costs[1] = fit(sobel, points[1], pca_data[tn], stds[tn], delta, sobel_vectors[imn-1], gradients)
+            # points[2], costs[2] = fit(sobel, points[2], pca_data[tn], stds[tn], delta, sobel_vectors[imn-1], gradients)
+            print ("\n")
+            update(homo_image, gradients, points, "test")
+            cv2.waitKey()
+            if delta < 0.6:
+                delta += 0.1
             # if ind%15 == 0:
-            #     delta = 0.8
+            #     delta = 1
             # else:
             #     delta = 0
+        min_cost = None
+        min_cost_i = 0
+        for index, cost in enumerate(costs):
+            if min_cost is None or cost < min_cost:
+                min_cost = cost
+                min_cost_i = index
 
+        print(min_cost_i)
+        print (min_cost)
+
+        for index in range(0, len(costs)):
+            if index != min_cost_i:
+                points[index,:,:] = 0
         update(homo_image, gradients, points, "test")
         key = cv2.waitKey()
         if key == ord('r'):
