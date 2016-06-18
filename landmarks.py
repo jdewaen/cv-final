@@ -3,19 +3,45 @@ import numpy as np
 import math
 
 
-def normalize_landmarks(input_landmarks_set):
+def normalize_landmarks(input_landmarks_set, tn):
     result_set = []
     scales = []
     angles = []
+    if USE_MIRRORED:
+        means = np.zeros((len(input_landmarks_set)/2, 2))
+    else:
+        means = np.zeros((len(input_landmarks_set), 2))
+    bottoms = np.zeros(means.shape)
+    index = 0
     for input_landmarks in input_landmarks_set:
         # normalize position
         mean_x = 0
         mean_y = 0
+        bottom_x = None
+        bottom_y = None
+        mirrored = False
         for landmark in input_landmarks:
             mean_x += landmark[0]
             mean_y += landmark[1]
+            if landmark[0] < 0:
+                mirrored = True
+                continue
+            if bottom_y is None:
+                bottom_x = landmark[0]
+                bottom_y = landmark[1]
+            elif tn < 4 and landmark[1] > bottom_y:
+                bottom_x = landmark[0]
+                bottom_y = landmark[1]
+            elif tn >= 4 and landmark[1] < bottom_y:
+                bottom_x = landmark[0]
+                bottom_y = landmark[1]
         mean_x /= len(input_landmarks)
         mean_y /= len(input_landmarks)
+        if not mirrored:
+            means[index] = [abs(mean_x), mean_y]
+            bottoms[index] = [abs(bottom_x), bottom_y]
+            index += 1
+
 
         origin_landmarks = []
         for landmark in input_landmarks:
@@ -46,7 +72,7 @@ def normalize_landmarks(input_landmarks_set):
     # print(np.mean(scales))
     # print(np.std(scales))
     # print("\n")
-    return result_set, np.mean(scales), np.std(scales), np.mean(angles), np.std(angles)
+    return result_set, np.mean(scales), np.std(scales), np.mean(angles), np.std(angles), means, bottoms
 
 
 def normalize_landmark_with_data(rot_reference, input_landmarks):
@@ -139,9 +165,16 @@ def process_landmarks(landmarks_input):
     normalized_landmarks = []
     scale_stats = []
     angle_stats = []
-    for tooth_group in grouped_landmarks:
-        lm, scale_mean, scale_std, angle_mean, angle_std = normalize_landmarks(tooth_group)
+    position_stats = np.zeros((len(grouped_landmarks), 4, 2))
+    for index, tooth_group in enumerate(grouped_landmarks):
+        lm, scale_mean, scale_std, angle_mean, angle_std, means, bottoms = normalize_landmarks(tooth_group, index)
+        print("mean: " + str(np.mean(means, axis=0)))
+        print("mstd: " + str(np.std(bottoms, axis=0)))
+        print("botm: " + str(np.mean(bottoms, axis=0)))
+        print("bstd: " + str(np.std(bottoms, axis=0)))
+        print("\n")
         normalized_landmarks.append(lm)
         scale_stats.append((scale_mean, scale_std))
         angle_stats.append((angle_mean, angle_std))
-    return normalized_landmarks, scale_stats, angle_stats
+        position_stats[index] = [np.mean(means, axis=0), np.std(means, axis=0), np.mean(bottoms, axis=0), np.std(bottoms, axis=0)]
+    return normalized_landmarks, scale_stats, angle_stats, position_stats

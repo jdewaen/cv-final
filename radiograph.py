@@ -136,6 +136,8 @@ def process_radiographs():
 
             homomorphic_image = homomorphic_filter(cropped_image)
             output.save_image(homomorphic_image, str(image_nb), HOMOMORPHIC_DIR)
+            normalized_image = normalize_histogram(homomorphic_image, True)
+            output.save_image(normalized_image, str(image_nb), NORMALIZED_DIR)
         else:
             homomorphic_image = cv2.imread(HOMOMORPHIC_DIR + str(image_nb) + ".png", 0)
 

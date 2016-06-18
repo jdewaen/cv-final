@@ -8,11 +8,11 @@ from output import *
 import pca
 import time
 from config import *
-from radiograph import sobel
 
 cx = 0
 cy = 0
 tn = 0
+
 
 def onclick(event, x, y, flags, param):
     global cx, cy
@@ -37,8 +37,10 @@ def update(homo_image, gradients, all_points, window, scores=None, details=None)
         hue += 1.0 / (len(all_points) + 1)
     cv2.imshow(window, np.hstack([homo_copy, gradients_copy]))
 
+
 def point_dist(point1, point2):
     return math.sqrt((point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2)
+
 
 def matrix_point_dist(point, matrix_center, d):
     x_coords = np.ones((2*d+1, 2*d+1)) * matrix_center[0]
@@ -80,20 +82,6 @@ def curvature(last_point, next_point, matrix_center, d):
     return result
 
 
-# def calculate_shape_cost2(points, index, pca_data, matrix_center, d):
-#     x_coords = np.ones(2*d+1) * matrix_center[0]
-#     x_coords += np.array(range(-d, d+1))
-#     y_coords = np.ones(2*d+1) * matrix_center[1]
-#     y_coords += np.array(range(-d, d+1))
-#     result = np.zeros((2*d+1, 2*d+1))
-#     _, eigv, mu = pca_data
-#     for y_i, y in enumerate(y_coords):
-#         for x_i, x in enumerate(x_coords):
-#             points[index] = np.array([x, y])
-#             vect = pca.project(eigv, points, mu)
-#             result[y_i, x_i] = np.linalg.norm(vect)
-#     return result
-
 def get_approx_scale(tn):
     scale = 90
     if tn == 0 or tn == 3:
@@ -105,6 +93,7 @@ def get_approx_scale(tn):
     if tn == 5 or tn == 6:
         scale = 80
     return scale
+
 
 def fix_shape(points, pca_data, stds):
     _, eigv, mu = pca_data
@@ -129,9 +118,6 @@ def fix_shape(points, pca_data, stds):
 
 def calculate_direction(vects, prev, next, matrix_center, d, nbh):
     perp_dir = -1  # INPUT IS CCW, points inwards if == 1
-    #
-    # if point == 12:
-    #     display_single_image(nbh)
 
     prev_all = np.zeros((2*d+1, 2*d+1, 2))
     prev_all[:, :, 0] = prev[0]
@@ -159,19 +145,6 @@ def calculate_direction(vects, prev, next, matrix_center, d, nbh):
     perp_prev = np.zeros((2*d+1, 2*d+1, 2))
     perp_prev[:, :, 0] = -perp_dir * diff[:, :, 1]
     perp_prev[:, :, 1] = perp_dir * diff[:, :, 0]
-
-    # diff = next_all - coords
-    # norm = np.linalg.norm(diff, axis=2)
-    # zeros = np.uint8(norm == np.zeros((2*d+1, 2*d+1)))  # all places where the norm is zero are one here
-    # norm += zeros  # prevent division by zero
-    # diff[:, :, 0] = diff[:, :, 0] / norm
-    # diff[:, :, 1] = diff[:, :, 1] / norm
-    # perp_next = np.zeros((2*d+1, 2*d+1, 2))
-    # perp_next[:, :, 0] = -perp_dir * diff[:, :, 1]
-    # perp_next[:, :, 1] = perp_dir * diff[:, :, 0]
-    #
-    # perp = (perp_prev + perp_next) / 2
-
 
     # sobel vectors
     norm = np.linalg.norm(vects, axis=2)
@@ -272,8 +245,7 @@ def main():
     # display_input("input")
 
     # normalize landmarks
-    lms, scale_stats, angle_stats = landmarks.process_landmarks(raw_landmarks)
-
+    lms, scale_stats, angle_stats, position_stats = landmarks.process_landmarks(raw_landmarks)
     # show normalized landmarks
     # display_all_overlaid_landmarks(landmarks, "landmarks")
 
@@ -289,7 +261,7 @@ def main():
 
     crop_offsets, sobel_vectors = radiograph.process_radiographs()
     tn = 0
-    imn = 12
+    imn = 14
     single = False
     pca_variations = 3
     rotation_variations = 3
@@ -299,10 +271,21 @@ def main():
         homo_image = cv2.imread(HOMOMORPHIC_DIR + str(imn) + ".png")
         gradients = cv2.imread(GRADIENT_DIR + str(imn) + ".png")
         sobel = cv2.imread(SOBEL_DENOISED_DIR + str(imn) + ".png", 0)
-        cv2.namedWindow("test")
-        cv2.imshow("test", homo_image)
-        cv2.setMouseCallback("test", onclick)
+
+
+        if tn == 0:
+            position_stats[:,0] -= [crop_offsets[imn-1][1], crop_offsets[imn-1][0]]
+            position_stats[:,2] -= [crop_offsets[imn-1][1], crop_offsets[imn-1][0]]
+        update(homo_image, gradients, [position_stats[:, 0], position_stats[:, 2]], "test")
         cv2.waitKey()
+        cx = position_stats[tn, 2, 0]
+        cy = position_stats[tn, 2, 1]
+
+
+        # cv2.namedWindow("test")
+        # cv2.imshow("test", homo_image)
+        # cv2.setMouseCallback("test", onclick)
+        # cv2.waitKey()
         points_raw = pca.vary_pca_parameter(0, stds[tn], pca_data[tn])
         points = np.zeros((total_variations, len(points_raw[0]), len(points_raw[0][0])))
 
