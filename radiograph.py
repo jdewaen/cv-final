@@ -114,11 +114,70 @@ def homomorphic_filter(img):
     return Ihmf2
 
 
-def detect_mouth(img, sobel, vects):
+def detect_mouth(imn, vectors):
     # thres = cv2.threshold(img,)
+    homo_image = cv2.imread(HOMOMORPHIC_DIR + str(imn) + ".png")
+    gradients = cv2.imread(GRADIENT_DIR + str(imn) + ".png")
+    sobel = cv2.imread(SOBEL_DENOISED_DIR + str(imn) + ".png", 0)
+    normalized = cv2.imread(NORMALIZED_DIR + str(imn) + ".png", 0)
+    norm_invert = np.uint8(np.ones(normalized.shape) * 255 - normalized)
+    _, thresh = cv2.threshold(norm_invert, 200, 255, cv2.THRESH_BINARY)
+    per_line = np.mean(thresh, axis=1)
+    per_line = cv2.GaussianBlur(per_line, (5, 5), 10)
+    means = np.uint8(per_line * np.ones((1, 100)))
+    mouth = 250 + np.argmax(per_line[250:])
+    normalized = cv2.cvtColor(np.uint8(normalized), cv2.COLOR_GRAY2BGR)
+    means = cv2.cvtColor(np.uint8(means), cv2.COLOR_GRAY2BGR)
+    cv2.line(gradients, (1, mouth), (len(gradients[0]), mouth), output.hsv_to_bgr(0, 1, 1))
+    # result = np.hstack((normalized, means))
+    middle = len(normalized[0]) / 2
+    sobely = cv2.Sobel(homo_image, cv2.CV_64F, 0, 1, ksize=3)
+    result_bottom = sobely[mouth - 20:mouth + 150, middle - 100:middle + 100]
 
-    output.display_single_image(img)
+    # lowest = np.min(result)
+    # result -= lowest
+    # highest = np.max(result)
+    # result = np.float64(result)
+    # result /= highest
+    result_bottom = result_bottom[:, :, 0]
+    result_bottom = np.uint8(result_bottom)
 
+    _, mask = cv2.threshold(result_bottom, 128, 255, cv2.THRESH_BINARY_INV)
+    result_bottom = cv2.bitwise_and(result_bottom, mask)
+    per_line_bottom = np.mean(result_bottom, axis=1)
+    per_line_bottom = cv2.GaussianBlur(per_line_bottom, (5, 5), 10)
+    _, per_line_bottom = cv2.threshold(np.uint8(per_line_bottom), 8, 255, cv2.THRESH_BINARY)
+    bottom_start = 0
+    for index, value in enumerate(per_line_bottom):
+        if value == 255:
+            bottom_start = index
+            break
+    cv2.line(result_bottom, (1, bottom_start), (len(result_bottom[0]), bottom_start), 255)
+    bottom_start -= 20 - mouth
+    cv2.line(gradients, (1, bottom_start), (len(gradients[0]), bottom_start), output.hsv_to_bgr(0.33, 1, 1))
+
+    result_top = sobely[mouth - 70:mouth + 50, middle - 100:middle + 100]
+    # result_top = normalized[mouth - 70:mouth + 60, middle - 100:middle + 100]
+    result_top = result_top[:, :, 0]
+    result_top = np.uint8(result_top * -1)
+    _, maskinv = cv2.threshold(result_top, 128, 255, cv2.THRESH_BINARY_INV)
+    result_top = cv2.bitwise_and(result_top, maskinv)
+    per_line_top = np.mean(result_top, axis=1)
+    per_line_top = cv2.GaussianBlur(per_line_top, (1, 1), 10)
+    _, per_line_top = cv2.threshold(np.uint8(per_line_top), 9, 255, cv2.THRESH_BINARY)
+    top_start = 0
+    for index, value in reversed(list(enumerate(per_line_top))):
+        if value == 255:
+            top_start = index
+            break
+    cv2.line(result_top, (1, top_start), (len(result_top[0]), top_start), 255)
+    top_start -= 70 - mouth
+    cv2.line(gradients, (1, top_start), (len(gradients[0]), top_start), output.hsv_to_bgr(0.66, 1, 1))
+    test_top = np.uint8(per_line_top * np.ones((1, 100)))
+
+    # output.display_single_image(gradients)
+    # output.display_single_image(np.hstack((result_top, test_top)))
+    return top_start, bottom_start
 
 def process_radiographs():
     crop_offsets = []

@@ -5,6 +5,7 @@ import os
 PROCESSED_RADIO_AMOUNT = 14
 TOTAL_RADIO_AMOUNT = 30
 TEETH_AMOUNT = 8
+POINTS_AMOUNT = 40
 
 # Make use of the mirrored dataset?
 USE_MIRRORED = True
