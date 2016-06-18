@@ -6,12 +6,11 @@ import numpy as np
 
 
 def save_image(image, filename, output_dir=OUTPUT_DIR):
-    directory = WORKING_DIR + output_dir
     filename += ".png"
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-    print("saving: " + directory + filename)
-    cv2.imwrite(directory + filename, image)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    print("saving: " + output_dir + filename)
+    cv2.imwrite(output_dir + filename, image)
 
 
 def hsv_to_bgr(h, s, v):

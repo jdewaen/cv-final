@@ -21,7 +21,7 @@ def onclick(event, x, y, flags, param):
         cy = y
 
 
-def update(homo_image, gradients, all_points, window):
+def update(homo_image, gradients, all_points, window, scores=None, details=None):
     homo_copy = np.copy(homo_image)
     gradients_copy = np.copy(gradients)
     hue = 0
@@ -29,6 +29,11 @@ def update(homo_image, gradients, all_points, window):
         for point in point_set:
             cv2.circle(homo_copy, (int(point[0]), int(point[1])), 1, hsv_to_bgr(hue, 1, 1), 2)
             cv2.circle(gradients_copy, (int(point[0]), int(point[1])), 1, hsv_to_bgr(hue, 1, 1), 2)
+        if scores is not None:
+            cv2.putText(gradients_copy, str(int(0.1*scores[index])), (0, 25 + index*20), cv2.FONT_HERSHEY_PLAIN, 1, hsv_to_bgr(hue, 1, 1))
+            cv2.putText(gradients_copy, str(int(0.1*details[index, 0])), (100, 25 + index*20), cv2.FONT_HERSHEY_PLAIN, 1, hsv_to_bgr(hue, 1, 1))
+            cv2.putText(gradients_copy, str(int(0.1*details[index, 1])), (150, 25 + index*20), cv2.FONT_HERSHEY_PLAIN, 1, hsv_to_bgr(hue, 1, 1))
+            cv2.putText(gradients_copy, str(int(0.1*details[index, 2])), (200, 25 + index*20), cv2.FONT_HERSHEY_PLAIN, 1, hsv_to_bgr(hue, 1, 1))
         hue += 1.0 / (len(all_points) + 1)
     cv2.imshow(window, np.hstack([homo_copy, gradients_copy]))
 
@@ -122,7 +127,7 @@ def fix_shape(points, pca_data, stds):
     return result
 
 
-def calculate_direction(vects, prev, next, matrix_center, d, nbh, point, bla):
+def calculate_direction(vects, prev, next, matrix_center, d, nbh):
     perp_dir = -1  # INPUT IS CCW, points inwards if == 1
     #
     # if point == 12:
@@ -155,17 +160,17 @@ def calculate_direction(vects, prev, next, matrix_center, d, nbh, point, bla):
     perp_prev[:, :, 0] = -perp_dir * diff[:, :, 1]
     perp_prev[:, :, 1] = perp_dir * diff[:, :, 0]
 
-    diff = next_all - coords
-    norm = np.linalg.norm(diff, axis=2)
-    zeros = np.uint8(norm == np.zeros((2*d+1, 2*d+1)))  # all places where the norm is zero are one here
-    norm += zeros  # prevent division by zero
-    diff[:, :, 0] = diff[:, :, 0] / norm
-    diff[:, :, 1] = diff[:, :, 1] / norm
-    perp_next = np.zeros((2*d+1, 2*d+1, 2))
-    perp_next[:, :, 0] = -perp_dir * diff[:, :, 1]
-    perp_next[:, :, 1] = perp_dir * diff[:, :, 0]
-
-    perp = (perp_prev + perp_next) / 2
+    # diff = next_all - coords
+    # norm = np.linalg.norm(diff, axis=2)
+    # zeros = np.uint8(norm == np.zeros((2*d+1, 2*d+1)))  # all places where the norm is zero are one here
+    # norm += zeros  # prevent division by zero
+    # diff[:, :, 0] = diff[:, :, 0] / norm
+    # diff[:, :, 1] = diff[:, :, 1] / norm
+    # perp_next = np.zeros((2*d+1, 2*d+1, 2))
+    # perp_next[:, :, 0] = -perp_dir * diff[:, :, 1]
+    # perp_next[:, :, 1] = perp_dir * diff[:, :, 0]
+    #
+    # perp = (perp_prev + perp_next) / 2
 
 
     # sobel vectors
@@ -176,27 +181,35 @@ def calculate_direction(vects, prev, next, matrix_center, d, nbh, point, bla):
     vects[:, :, 1] = vects[:, :, 1] / norm
 
     result = (np.multiply(perp_prev[:, :, 0], vects[:, :, 0]) + np.multiply(perp_prev[:, :, 1], vects[:, :, 1]))
-    # result = np.multiply(result)
+    # result += np.ones(result.shape)
+    result = np.multiply(nbh, result)
+    # result = np.multiply(nbh, result)
     # test1 = radiograph.generate_gradient_from_vectors(nbh, perp_prev)
     # test2 = radiograph.generate_gradient_from_vectors(nbh, vects)
-    # sobel = cv2.cvtColor(nbh,cv2.COLOR_GRAY2BGR)
-    # resulttest = cv2.cvtColor(np.uint8(np.multiply(nbh, result + np.ones(result.shape))), cv2.COLOR_GRAY2BGR)
+    # resulttest = cv2.cvtColor(np.uint8(result), cv2.COLOR_GRAY2BGR)
     # display_single_image(cv2.resize(np.hstack([resulttest, test1, test2]), (0, 0),fx=10,fy=10))
     return result
 
 
+def normalize_map(raw):
+    norm = np.linalg.norm(raw)
+    zeros = np.uint8(norm == np.zeros(raw.shape))  # all places where the norm is zero are one here
+    norm += zeros  # prevent division by zero
+    raw[:, :] = raw[:, :] / norm
+    return raw
+
 def fit(sobel, points, pca_data, stds, delta, vects, nbh):
-    d = 10
-    alpha = 0.3  # tension 0.2
-    beta = 0.5  # stiffness 0.3
-    gamma = 3  # sensitivity
-    epsilon = 400  # pick right line
-    # delta = 1 # shape
+    d = 7
+    alpha = .2  # tension 0.2
+    beta = .3  # stiffness 0.3
+    gamma = 1.0  # sensitivity
+
     new_points = np.zeros(points.shape)
     cost_map = []
     last_point = points[-1]
     avg_dist = average_dist(points)
-    cost = np.zeros(4)
+    cost = np.zeros(3)
+    total_cost = 0
     for index, point in enumerate(points):
         x, y = point
         if index == len(points) - 1:
@@ -204,47 +217,48 @@ def fit(sobel, points, pca_data, stds, delta, vects, nbh):
         else:
             next_point = points[index + 1]
         # start = time.clock()
-        direction_cost = calculate_direction(vects[y-d:y+d+1, x-d:x+d+1], last_point, next_point, point, d, sobel[y-d:y+d+1, x-d:x+d+1], index, nbh[y-d:y+d+1, x-d:x+d+1])
+        ext_cost = calculate_direction(vects[y-d:y+d+1, x-d:x+d+1], last_point, next_point, point, d, sobel[y-d:y+d+1, x-d:x+d+1])
         # print("dir: " + str(time.clock() - start))
         # start = time.clock()
         # ext_cost = - gamma * sobel[y-d:y+d+1, x-d:x+d+1]
-        ext_cost = - gamma * np.multiply(sobel[y-d:y+d+1, x-d:x+d+1], direction_cost)
+        # ext_cost = - gamma * np.multiply(sobel[y-d:y+d+1, x-d:x+d+1], direction_cost)
         # print("ext: " + str(time.clock() - start))
         # start = time.clock()
-        elastic_cost = alpha * np.square(matrix_point_dist(last_point, point, d) - avg_dist)
+        elastic_cost = np.square(matrix_point_dist(last_point, point, d) - avg_dist)
         # print("ela: " + str(time.clock() - start))
         # start = time.clock()
-        curvature_cost = beta * curvature(last_point, next_point, point, d)
+        curvature_cost = curvature(last_point, next_point, point, d)
         # print("cur: " + str(time.clock() - start))
         # start = time.clock()
+        cost_map.append(beta * curvature_cost + alpha * elastic_cost - gamma * ext_cost)
+        # display_single_image(cv2.resize(np.hstack([ext_cost, elastic_cost, curvature_cost, cost_map[index]]), (0, 0), fx=10, fy=10))
 
-        cost_map.append(curvature_cost + elastic_cost + ext_cost)
-        # cost[0] += curvature_cost[d, d]
-        # cost[1] += elastic_cost[d, d]
-        # cost[2] += ext_cost[d, d]
         # cost[3] += direction_cost[d, d]
         # select point
         tl = point - [d, d]
         min_val = None
         min_point = None
-        cost = 0
+
         for y, row in enumerate(cost_map[index]):
             for x, value in enumerate(row):
                 if min_val is None or value < min_val:
                     min_val = value
-                    min_point = tl + [x, y]
-        new_points[index] = min_point
-        last_point = min_point
-        cost += min_val
+                    min_point = [x, y]
+        new_points[index] = np.ones(2)*tl + min_point
+        last_point = np.ones(2)*tl + min_point
+        # total_cost += ext_cost[min_point[1], min_point[0]]
+        cost[0] += beta * curvature_cost[y, x]
+        cost[1] += alpha * elastic_cost[y, x]
+        cost[2] -= gamma * ext_cost[y, x]
+        total_cost += min_val
         # print("oth: " + str(time.clock() - start))
     # print("curv: " + str(cost[0]) + "")
     # print("elas: " + str(cost[1]) + "")
     # print("exte: " + str(cost[2]) + "")
-    # print("dirc: " + str(cost[3]) + "\n")
-    print("cost: " + str(cost) + "\n")
+    # print("cost: " + str(total_cost) + "")
     new_points = (1 - delta)*new_points + delta*fix_shape(new_points, pca_data, stds)
 
-    return new_points, cost
+    return new_points, total_cost, cost
 
 # calculate_cost()
 
@@ -275,7 +289,12 @@ def main():
 
     crop_offsets, sobel_vectors = radiograph.process_radiographs()
     tn = 0
-    imn = 1
+    imn = 12
+    single = False
+    pca_variations = 3
+    rotation_variations = 3
+    position_variations = 3
+    total_variations = pca_variations * rotation_variations * position_variations
     while tn < 8:
         homo_image = cv2.imread(HOMOMORPHIC_DIR + str(imn) + ".png")
         gradients = cv2.imread(GRADIENT_DIR + str(imn) + ".png")
@@ -285,57 +304,51 @@ def main():
         cv2.setMouseCallback("test", onclick)
         cv2.waitKey()
         points_raw = pca.vary_pca_parameter(0, stds[tn], pca_data[tn])
-        points = np.zeros((9, len(points_raw[0]), len(points_raw[0][0])))
-        points[0] = landmarks.rotate_landmarks(points_raw[0], angle_stats[tn][0] - 3*angle_stats[tn][1])
-        points[1] = landmarks.rotate_landmarks(points_raw[0], angle_stats[tn][0])
-        points[2] = landmarks.rotate_landmarks(points_raw[0], angle_stats[tn][0] + 3*angle_stats[tn][1])
-        points[3] = landmarks.rotate_landmarks(points_raw[1], angle_stats[tn][0] - 3*angle_stats[tn][1])
-        points[4] = landmarks.rotate_landmarks(points_raw[1], angle_stats[tn][0])
-        points[5] = landmarks.rotate_landmarks(points_raw[1], angle_stats[tn][0] + 3*angle_stats[tn][1])
-        points[6] = landmarks.rotate_landmarks(points_raw[2], angle_stats[tn][0] - 3*angle_stats[tn][1])
-        points[7] = landmarks.rotate_landmarks(points_raw[2], angle_stats[tn][0])
-        points[8] = landmarks.rotate_landmarks(points_raw[2], angle_stats[tn][0] + 3*angle_stats[tn][1])
-        # eigval, eigvect, mu = pca_data[0]
-        # default = np.zeros(len(eigvect[0]))
-        # points = pca.reconstruct(eigvect, default, mu)
-        # cx, cy = (162, 530) # 1
-        # cx, cy = (295, 385) # 2
-        # cx, cy = (211, 510) # 4
+        points = np.zeros((total_variations, len(points_raw[0]), len(points_raw[0][0])))
+
+        if not single:
+            for index in range(0, total_variations/pca_variations):
+                points[pca_variations * index] = points_raw[index % pca_variations]
+                points[pca_variations * index + 1] = points_raw[index % pca_variations]
+                points[pca_variations * index + 2] = points_raw[index % pca_variations]
+        else:
+            points[0] = points_raw[1]
+
         points = np.multiply(points, get_approx_scale(tn))
-        # y_start = np.zeros(3)
         for point_set in points:
             if tn < 4:
-                point_set += (cx, cy - max(point_set[:, 1]))
+                offset_y_index = np.argmax(point_set[:, 1])
             else:
-                point_set += (cx, cy - min(point_set[:, 1]))
-        #
-        # if tn < 4:
-        #     y_start[0] = max(points[0, :, 1])
-        #     y_start[1] = max(points[1, :, 1])
-        #     y_start[2] = max(points[2, :, 1])
-        # else:
-        #     y_start[0] = min(points[0, :, 1])
-        #     y_start[1] = min(points[1, :, 1])
-        #     y_start[2] = min(points[2, :, 1])
-        # points[0] += (cx, cy - y_start[0])
-        # points[1] += (cx, cy - y_start[1])
-        # points[2] += (cx, cy - y_start[2])
+                offset_y_index = np.argmin(point_set[:, 1])
+            point_set -= point_set[offset_y_index]
+
+        if not single:
+            for index, point_set in enumerate(points):
+                mult = (index % 3) - 1
+                points[index] = landmarks.rotate_landmarks(point_set, mult*1.5*angle_stats[tn][1])
+        for index in range(0, total_variations):
+            mult = ((index / (total_variations / position_variations)) % position_variations) - 1
+            points[index] += (10*mult + cx, cy)
+        # points[:] += (cx, cy)
         print(cx, cy)
         update(homo_image, gradients, points, "test")
         cv2.waitKey()
         delta = 0
         ind = 0
         # while True:
-        costs = np.zeros(9)
+        costs = np.zeros(total_variations)
+        costs_details = np.zeros((total_variations, 3))
         while ind < 10:
             ind += 1
-            for index, point_set in enumerate(points):
-                points[index], costs[index] = fit(sobel, point_set, pca_data[tn], stds[tn], delta, sobel_vectors[imn-1], gradients)
-            # points[1], costs[1] = fit(sobel, points[1], pca_data[tn], stds[tn], delta, sobel_vectors[imn-1], gradients)
-            # points[2], costs[2] = fit(sobel, points[2], pca_data[tn], stds[tn], delta, sobel_vectors[imn-1], gradients)
-            print ("\n")
-            update(homo_image, gradients, points, "test")
-            cv2.waitKey()
+            if not single:
+                for index, point_set in enumerate(points):
+                    points[index], costs[index], costs_details[index] = fit(sobel, point_set, pca_data[tn], stds[tn], delta, sobel_vectors[imn-1], gradients)
+            else:
+                points[0], costs[0], costs_details[0] = fit(sobel, points[0], pca_data[tn], stds[tn], delta,
+                                                  sobel_vectors[imn - 1], gradients)
+            # print ("\n")
+            # update(homo_image, gradients, points, "test", costs, costs_details)
+            # cv2.waitKey()
             if delta < 0.6:
                 delta += 0.1
             # if ind%15 == 0:
@@ -349,13 +362,15 @@ def main():
                 min_cost = cost
                 min_cost_i = index
 
-        print(min_cost_i)
-        print (min_cost)
+        # print(min_cost_i)
+        # print (min_cost)
 
-        for index in range(0, len(costs)):
-            if index != min_cost_i:
-                points[index,:,:] = 0
-        update(homo_image, gradients, points, "test")
+
+        if not single:
+            for index in range(0, len(costs)):
+                if index != min_cost_i:
+                    points[index,:,:] = 0
+        update(homo_image, gradients, points, "test", costs, costs_details)
         key = cv2.waitKey()
         if key == ord('r'):
             continue

@@ -66,13 +66,13 @@ def vary_pca_parameter(parameter, std, pca_data):
     num_dim = len(eigenvectors[0])
     params = np.zeros(num_dim)
 
-    params[parameter] = -3 * std[parameter]
+    params[parameter] = -2 * std[parameter]
     result.append(reconstruct(eigenvectors, params, mu))
 
     params[parameter] = 0
     result.append(reconstruct(eigenvectors, params, mu))
 
-    params[parameter] = 3 * std[parameter]
+    params[parameter] = 2 * std[parameter]
     result.append(reconstruct(eigenvectors, params, mu))
 
     return result

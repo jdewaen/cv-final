@@ -123,7 +123,7 @@ def detect_mouth(img, sobel, vects):
 def process_radiographs():
     crop_offsets = []
     gradient_set = []
-    for image_nb in range(1, PROCESSED_RADIO_AMOUNT + 1):
+    for image_nb in range(1, TOTAL_RADIO_AMOUNT + 1):
         raw_image = input.import_radiograph(image_nb)
         crop_top_left, crop_bottom_right = calculate_crop_data(raw_image, X_CROP_RATIO, Y_CROP_RATIO, Y_CROP_OFFSET)
         crop_offsets.append(crop_top_left)

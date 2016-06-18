@@ -43,9 +43,9 @@ def normalize_landmarks(input_landmarks_set):
             norm_landmarks, angle = calculate_landmark_rotation(ref, scaled_landmarks)
             result_set.append(norm_landmarks)
             angles.append(angle)
-    print(np.mean(scales))
-    print(np.std(scales))
-    print("\n")
+    # print(np.mean(scales))
+    # print(np.std(scales))
+    # print("\n")
     return result_set, np.mean(scales), np.std(scales), np.mean(angles), np.std(angles)
 
 
