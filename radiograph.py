@@ -129,22 +129,19 @@ def detect_mouth(imn, vectors):
     normalized = cv2.cvtColor(np.uint8(normalized), cv2.COLOR_GRAY2BGR)
     means = cv2.cvtColor(np.uint8(means), cv2.COLOR_GRAY2BGR)
     cv2.line(gradients, (1, mouth), (len(gradients[0]), mouth), output.hsv_to_bgr(0, 1, 1))
-    # result = np.hstack((normalized, means))
+
+
     middle = len(normalized[0]) / 2
     sobely = cv2.Sobel(homo_image, cv2.CV_64F, 0, 1, ksize=3)
-    result_bottom = sobely[mouth - 20:mouth + 150, middle - 100:middle + 100]
 
-    # lowest = np.min(result)
-    # result -= lowest
-    # highest = np.max(result)
-    # result = np.float64(result)
-    # result /= highest
+
+    # BOTTOM TEETH VERTICAL
+    result_bottom = sobely
     result_bottom = result_bottom[:, :, 0]
     result_bottom = np.uint8(result_bottom)
-
     _, mask = cv2.threshold(result_bottom, 128, 255, cv2.THRESH_BINARY_INV)
     result_bottom = cv2.bitwise_and(result_bottom, mask)
-    per_line_bottom = np.mean(result_bottom, axis=1)
+    per_line_bottom = np.mean(result_bottom[mouth - 20:mouth + 150, middle - 50:middle + 50], axis=1)
     per_line_bottom = cv2.GaussianBlur(per_line_bottom, (5, 5), 10)
     _, per_line_bottom = cv2.threshold(np.uint8(per_line_bottom), 8, 255, cv2.THRESH_BINARY)
     bottom_start = 0
@@ -156,13 +153,15 @@ def detect_mouth(imn, vectors):
     bottom_start -= 20 - mouth
     cv2.line(gradients, (1, bottom_start), (len(gradients[0]), bottom_start), output.hsv_to_bgr(0.33, 1, 1))
 
-    result_top = sobely[mouth - 70:mouth + 50, middle - 100:middle + 100]
-    # result_top = normalized[mouth - 70:mouth + 60, middle - 100:middle + 100]
+
+
+    # TOP TEETH VERTICAL
+    result_top = sobely
     result_top = result_top[:, :, 0]
     result_top = np.uint8(result_top * -1)
     _, maskinv = cv2.threshold(result_top, 128, 255, cv2.THRESH_BINARY_INV)
     result_top = cv2.bitwise_and(result_top, maskinv)
-    per_line_top = np.mean(result_top, axis=1)
+    per_line_top = np.mean(result_top[mouth - 70:mouth + 50, middle - 50:middle + 50], axis=1)
     per_line_top = cv2.GaussianBlur(per_line_top, (1, 1), 10)
     _, per_line_top = cv2.threshold(np.uint8(per_line_top), 9, 255, cv2.THRESH_BINARY)
     top_start = 0
@@ -175,9 +174,151 @@ def detect_mouth(imn, vectors):
     cv2.line(gradients, (1, top_start), (len(gradients[0]), top_start), output.hsv_to_bgr(0.66, 1, 1))
     test_top = np.uint8(per_line_top * np.ones((1, 100)))
 
-    # output.display_single_image(gradients)
+
+    sobelx = cv2.Sobel(homo_image, cv2.CV_64F, 1, 0, ksize=3)
+
+    # BOTTOM TEETH HORIZONTAL
+    bottom_gradients = gradients[bottom_start+70:bottom_start + 110, middle - 250: middle + 250]
+    bottom_hori = sobelx[bottom_start+70:bottom_start + 110, middle - 250: middle + 250]
+    bottom_hori = bottom_hori[:, :, 0]
+
+
+    bottom_hori_1 = np.uint8(bottom_hori)
+    _, hori_mask_1 = cv2.threshold(bottom_hori_1, 128, 255, cv2.THRESH_BINARY_INV)
+    bottom_hori_1 = cv2.bitwise_and(bottom_hori_1, hori_mask_1)
+    per_line_hori_bottom_1 = np.mean(bottom_hori_1, axis=0)
+    per_line_hori_bottom_1 = cv2.GaussianBlur(per_line_hori_bottom_1, (5, 5), 10)
+    _, per_line_hori_bottom_1a = cv2.threshold(np.uint8(per_line_hori_bottom_1), np.max(per_line_hori_bottom_1)*0.4, 255, cv2.THRESH_BINARY)
+    test_hori_bottom_1 = np.transpose(np.uint8(per_line_hori_bottom_1 * np.ones((1, 40))))
+    test_hori_bottom_1a = np.transpose(np.uint8(per_line_hori_bottom_1a * np.ones((1, 40))))
+
+    bottom_hori_2 = np.uint8(bottom_hori * -1)
+    _, hori_mask_2 = cv2.threshold(bottom_hori_2, 128, 255, cv2.THRESH_BINARY_INV)
+    bottom_hori_2 = cv2.bitwise_and(bottom_hori_2, hori_mask_2)
+    per_line_hori_bottom_2 = np.mean(bottom_hori_2, axis=0)
+    per_line_hori_bottom_2 = cv2.GaussianBlur(per_line_hori_bottom_2, (5, 5), 10)
+    _, per_line_hori_bottom_2a = cv2.threshold(np.uint8(per_line_hori_bottom_2), np.max(per_line_hori_bottom_2)*0.4, 255, cv2.THRESH_BINARY)
+    test_hori_bottom_2 = np.transpose(np.uint8(per_line_hori_bottom_2 * np.ones((1, 40))))
+    test_hori_bottom_2a = np.transpose(np.uint8(per_line_hori_bottom_2a * np.ones((1, 40))))
+
+    #
+    # output.display_single_image(np.vstack((bottom_hori_1, test_hori_bottom_1, test_hori_bottom_1a,
+    #                                        bottom_hori_2, test_hori_bottom_2, test_hori_bottom_2a
+    # )))
+
+    middle_edge = find_teeth_borders(per_line_hori_bottom_1a, per_line_hori_bottom_2a, len(per_line_hori_bottom_1a)/2, bottom_gradients)
+    first_left_edge = find_teeth_borders(per_line_hori_bottom_1a, per_line_hori_bottom_2a, middle_edge - 40, bottom_gradients, -1)
+    first_right_edge = find_teeth_borders(per_line_hori_bottom_1a, per_line_hori_bottom_2a, middle_edge + 40, bottom_gradients, 1)
+    first_left_width = abs(middle_edge - first_left_edge)
+    first_right_width = abs(first_right_edge - middle_edge)
+    avg_width = (first_left_width + first_right_width) / 2
+    sec_left_edge = find_teeth_borders(per_line_hori_bottom_1a, per_line_hori_bottom_2a, first_left_edge - avg_width, bottom_gradients, -1)
+    sec_right_edge = find_teeth_borders(per_line_hori_bottom_1a, per_line_hori_bottom_2a, first_right_edge + avg_width, bottom_gradients, 1)
+    # _, per_line_hori_bottom = cv2.threshold(np.uint8(per_line_hori_bottom), 8, 255, cv2.THRESH_BINARY)
+
+    # cv2.line(bottom_gradients, (middle_edge, 1), (middle_edge, len(bottom_gradients)), output.hsv_to_bgr(0, 1, 1))
+    # cv2.line(bottom_gradients, (first_left_edge, 1), (first_left_edge, len(bottom_gradients)), output.hsv_to_bgr(0.33, 1, 1))
+    # cv2.line(bottom_gradients, (first_right_edge, 1), (first_right_edge, len(bottom_gradients)), output.hsv_to_bgr(0.33, 1, 1))
+    # cv2.line(bottom_gradients, (sec_left_edge, 1), (sec_left_edge, len(bottom_gradients)), output.hsv_to_bgr(0.66, 1, 1))
+    # cv2.line(bottom_gradients, (sec_right_edge, 1), (sec_right_edge, len(bottom_gradients)), output.hsv_to_bgr(0.66, 1, 1))
+
+    bottom_centers = []
+    bottom_centers.append((sec_left_edge + first_left_edge)/2)
+    bottom_centers.append((middle_edge + first_left_edge)/2)
+    bottom_centers.append((sec_right_edge + first_right_edge)/2)
+    bottom_centers.append((middle_edge + first_right_edge)/2)
+    bottom_result = []
+
+    for tooth_center in bottom_centers:
+        abs_center = (len(result_bottom[0]) / 2) - 250 + tooth_center
+        slice = result_bottom[bottom_start - 30:bottom_start + 30, abs_center - 10:abs_center + 10]
+        per_line = np.mean(slice, axis=1)
+        per_line = cv2.GaussianBlur(per_line, (5, 5), 10)
+        _, per_line = cv2.threshold(np.uint8(per_line), 8, 255, cv2.THRESH_BINARY)
+        start = 0
+        for index, value in enumerate(per_line):
+            if value == 255:
+                start = index
+                break
+        bottom_result.append([abs_center, bottom_start - 30 + start])
+        # output.display_single_image(slice)
+    print(str(imn))
+    # output.display_single_image(bottom_gradients)
     # output.display_single_image(np.hstack((result_top, test_top)))
-    return top_start, bottom_start
+    return top_start, bottom_result
+
+
+def find_teeth_borders(left, right, start, gradients, force_direction=0):
+    gradients = np.copy(gradients)
+    cv2.line(gradients, (start, 1), (start, len(gradients)), output.hsv_to_bgr(0, 1, 1))
+    lefta = cv2.cvtColor(np.uint8(np.transpose(np.uint8(left * np.ones((1, 40))))), cv2.COLOR_GRAY2BGR)
+    righta = cv2.cvtColor(np.uint8(np.transpose(np.uint8(right * np.ones((1, 40))))), cv2.COLOR_GRAY2BGR)
+    # output.display_single_image(np.vstack((gradients, lefta, righta)))
+
+    # find middle
+    search_direction = -1
+    i = 0
+    left_edge_found = False
+    skip_current = False
+    first_border = 0
+    while i in range(0, start):
+        if left[start] == 255:
+            search_direction = -1
+            left_edge_found = True
+            skip_current = True
+            break
+        if right[start] == 255:
+            search_direction = 1
+            left_edge_found = False
+            skip_current = True
+            break
+        if left[start + i] == 255 and force_direction != -1:
+            search_direction = -1
+            left_edge_found = True
+            skip_current = True
+            break
+        elif right[start + i] == 255 and force_direction != -1:
+            search_direction = 1
+            left_edge_found = False
+            skip_current = False
+            first_border = start + i
+            break
+        elif left[start - i] == 255 and force_direction != 1:
+            search_direction = -1
+            left_edge_found = True
+            skip_current = False
+            first_border = start - i
+            break
+        elif right[start - i] == 255 and force_direction != 1:
+            search_direction = 1
+            left_edge_found = False
+            skip_current = True
+        i += 1
+    if left_edge_found:
+        first_edge_found = left
+        other_edge = right
+    else:
+        first_edge_found = right
+        other_edge = left
+
+    if skip_current:
+        while first_edge_found[start + search_direction*i] == 255:
+            i += 1
+        first_border = start + search_direction*i
+
+    while start + search_direction*i < len(other_edge[0]) and other_edge[start + search_direction*i] != 255:
+        i += 1
+    other_border = start + search_direction*i
+
+    middle = (first_border + other_border)/2
+
+    # cv2.line(gradients, (middle, 1), (middle, len(gradients)), output.hsv_to_bgr(0.33, 1, 1))
+
+
+
+    # output.display_single_image(np.vstack((gradients, lefta, righta)))
+    return middle
+
 
 def process_radiographs():
     crop_offsets = []

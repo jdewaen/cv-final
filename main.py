@@ -261,14 +261,14 @@ def main():
 
     crop_offsets, sobel_vectors = radiograph.process_radiographs()
     top_starts = np.zeros(TOTAL_RADIO_AMOUNT)
-    bottom_starts = np.zeros(TOTAL_RADIO_AMOUNT)
-    for i in range(1, TOTAL_RADIO_AMOUNT + 1):
+    bottom_starts = np.zeros((TOTAL_RADIO_AMOUNT, 4, 2))
+    for i in range(1, 26):
         top_starts[i-1], bottom_starts[i-1] = radiograph.detect_mouth(i, sobel_vectors[i - 1])
 
 
 
     tn = 0
-    imn = 24
+    imn = 1
 
 
     single = False
@@ -283,7 +283,7 @@ def main():
     position_stats[:, 0] -= [crop_offsets[imn - 1][1], crop_offsets[imn - 1][0]]
     position_stats[:, 2] -= [crop_offsets[imn - 1][1], crop_offsets[imn - 1][0]]
     position_stats[0:4, 2, 1] = top_starts[imn - 1]
-    position_stats[4:8, 2, 1] = bottom_starts[imn - 1]
+    position_stats[4:8, 2] = bottom_starts[imn - 1]
     update(homo_image, gradients, [position_stats[:, 2]], "test")
     cv2.waitKey()
 
@@ -293,7 +293,8 @@ def main():
         if tn < 4:
             cy = top_starts[imn - 1]
         else:
-            cy = bottom_starts[imn - 1]
+            cx = bottom_starts[imn - 1, tn - 4, 0]
+            cy = bottom_starts[imn - 1, tn - 4, 1]
 
 
         # cv2.namedWindow("test")
