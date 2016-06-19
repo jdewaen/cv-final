@@ -40,6 +40,8 @@ def calculate_crop_data(image, x_ratio, y_ratio, y_offset):
 
 
 def crop(image, top_left, bottom_right):
+    top_left = np.int32(top_left)
+    bottom_right = np.int32(bottom_right)
     return image[top_left[0]:bottom_right[0], top_left[1]:bottom_right[1]]
 
 def sobel(img):
