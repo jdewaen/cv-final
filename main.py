@@ -238,6 +238,8 @@ def fit(sobel, points, pca_data, stds, delta, vects, nbh):
 
 def main():
     global tn
+
+    print("Building Active Shape Models...")
     # import raw landmarks from file
     raw_landmarks = input.import_all_landmarks()
 
@@ -245,7 +247,7 @@ def main():
     # display_input("input")
 
     # normalize landmarks
-    lms, scale_stats, angle_stats, position_stats = landmarks.process_landmarks(raw_landmarks)
+    lms, scale_stats, angle_stats, _ = landmarks.process_landmarks(raw_landmarks)
     # show normalized landmarks
     # display_all_overlaid_landmarks(landmarks, "landmarks")
 
@@ -259,121 +261,118 @@ def main():
     #     display_side_by_side_landmarks(pca.vary_pca_parameter(0, stds[tn], pca_data[tn]), "modelvar-"+str(tn) + "-0")
     #     display_side_by_side_landmarks(pca.vary_pca_parameter(1, stds[tn], pca_data[tn]), "modelvar-"+str(tn) + "-1")
 
+
+
+    print("Processing radiographs...")
     crop_offsets, sobel_vectors = radiograph.process_radiographs()
-    top_starts = np.zeros(TOTAL_RADIO_AMOUNT)
-    bottom_starts = np.zeros((TOTAL_RADIO_AMOUNT, 4, 2))
-    for i in range(1, 26):
-        top_starts[i-1], bottom_starts[i-1] = radiograph.detect_mouth(i, sobel_vectors[i - 1])
+    print("\n")
+    for imn in range(1, TOTAL_RADIO_AMOUNT):
+        print("Fitting for image " + str(imn) + ":")
+        print("Importing data...")
+        homo_image = cv2.imread(HOMOMORPHIC_DIR + str(imn) + ".png")
+        gradients = cv2.imread(GRADIENT_DIR + str(imn) + ".png")
+        sobel = cv2.imread(SOBEL_DENOISED_DIR + str(imn) + ".png", 0)
+        normalized = cv2.imread(NORMALIZED_DIR + str(imn) + ".png", 0)
+
+        print("Estimating starting positions...")
+        starting_positions = radiograph.detect_mouth(imn, homo_image, gradients, normalized)
+
+        single = False
+        pca_variations = 3
+        rotation_variations = 3
+        position_variations = 3
+        total_variations = pca_variations * rotation_variations * position_variations
+        points_result = np.zeros((TEETH_AMOUNT, POINTS_AMOUNT, 2))
+
+        update(homo_image, gradients, [starting_positions], "test")
+        cv2.waitKey()
+        cv2.destroyAllWindows()
+
+        print("Initialized!")
+        # Tooth loop
+        tn = 0
+        while tn < 8:
+            print("Fitting tooth " + str(tn+1) + "...")
+            cx = starting_positions[tn][0]
+            cy = starting_positions[tn][1]
 
 
+            # cv2.namedWindow("test")
+            # cv2.imshow("test", homo_image)
+            # cv2.setMouseCallback("test", onclick)
+            # cv2.waitKey()
+            points_raw = pca.vary_pca_parameter(0, stds[tn], pca_data[tn])
+            points = np.zeros((total_variations, len(points_raw[0]), len(points_raw[0][0])))
 
-    tn = 0
-    imn = 1
-
-
-    single = False
-    pca_variations = 3
-    rotation_variations = 3
-    position_variations = 3
-    total_variations = pca_variations * rotation_variations * position_variations
-    points_result = np.zeros((TEETH_AMOUNT, POINTS_AMOUNT, 2))
-    homo_image = cv2.imread(HOMOMORPHIC_DIR + str(imn) + ".png")
-    gradients = cv2.imread(GRADIENT_DIR + str(imn) + ".png")
-    sobel = cv2.imread(SOBEL_DENOISED_DIR + str(imn) + ".png", 0)
-    position_stats[:, 0] -= [crop_offsets[imn - 1][1], crop_offsets[imn - 1][0]]
-    position_stats[:, 2] -= [crop_offsets[imn - 1][1], crop_offsets[imn - 1][0]]
-    position_stats[0:4, 2, 1] = top_starts[imn - 1]
-    position_stats[4:8, 2] = bottom_starts[imn - 1]
-    update(homo_image, gradients, [position_stats[:, 2]], "test")
-    cv2.waitKey()
-
-    while tn < 8:
-        cx = position_stats[tn, 2, 0]
-
-        if tn < 4:
-            cy = top_starts[imn - 1]
-        else:
-            cx = bottom_starts[imn - 1, tn - 4, 0]
-            cy = bottom_starts[imn - 1, tn - 4, 1]
-
-
-        # cv2.namedWindow("test")
-        # cv2.imshow("test", homo_image)
-        # cv2.setMouseCallback("test", onclick)
-        # cv2.waitKey()
-        points_raw = pca.vary_pca_parameter(0, stds[tn], pca_data[tn])
-        points = np.zeros((total_variations, len(points_raw[0]), len(points_raw[0][0])))
-
-        if not single:
-            for index in range(0, total_variations/pca_variations):
-                points[pca_variations * index] = points_raw[index % pca_variations]
-                points[pca_variations * index + 1] = points_raw[index % pca_variations]
-                points[pca_variations * index + 2] = points_raw[index % pca_variations]
-        else:
-            points[0] = points_raw[1]
-
-        points = np.multiply(points, get_approx_scale(tn))
-        for point_set in points:
-            if tn < 4:
-                offset_y_index = np.argmax(point_set[:, 1])
+            if not single:
+                for index in range(0, total_variations/pca_variations):
+                    points[pca_variations * index] = points_raw[index % pca_variations]
+                    points[pca_variations * index + 1] = points_raw[index % pca_variations]
+                    points[pca_variations * index + 2] = points_raw[index % pca_variations]
             else:
-                offset_y_index = np.argmin(point_set[:, 1])
-            point_set -= point_set[offset_y_index]
+                points[0] = points_raw[1]
 
-        if not single:
-            for index, point_set in enumerate(points):
-                mult = (index % 3) - 1
-                points[index] = landmarks.rotate_landmarks(point_set, mult*1.5*angle_stats[tn][1])
-        for index in range(0, total_variations):
-            mult = ((index / (total_variations / position_variations)) % position_variations) - 1
-            points[index] += (10*mult + cx, cy)
-        # points[:] += (cx, cy)
-        print(cx, cy)
-        # update(homo_image, gradients, points, "test")
-        # cv2.waitKey()
-        delta = 0
-        ind = 0
-        # while True:
-        costs = np.zeros(total_variations)
-        costs_details = np.zeros((total_variations, 3))
-        while ind < 8:
-            ind += 1
+            points = np.multiply(points, get_approx_scale(tn))
+            for point_set in points:
+                if tn < 4:
+                    offset_y_index = np.argmax(point_set[:, 1])
+                else:
+                    offset_y_index = np.argmin(point_set[:, 1])
+                point_set -= point_set[offset_y_index]
+
             if not single:
                 for index, point_set in enumerate(points):
-                    points[index], costs[index], costs_details[index] = fit(sobel, point_set, pca_data[tn], stds[tn], delta, sobel_vectors[imn-1], gradients)
-            else:
-                points[0], costs[0], costs_details[0] = fit(sobel, points[0], pca_data[tn], stds[tn], delta,
-                                                  sobel_vectors[imn - 1], gradients)
-            # print ("\n")
-            # update(homo_image, gradients, points, "test", costs, costs_details)
+                    mult = (index % 3) - 1
+                    points[index] = landmarks.rotate_landmarks(point_set, mult*1.5*angle_stats[tn][1])
+            for index in range(0, total_variations):
+                mult = ((index / (total_variations / position_variations)) % position_variations) - 1
+                points[index] += (10*mult + cx, cy)
+            # points[:] += (cx, cy)
+            # update(homo_image, gradients, points, "test")
             # cv2.waitKey()
-            if delta < 0.6:
-                delta += 0.1
-            # if ind%15 == 0:
-            #     delta = 1
-            # else:
-            #     delta = 0
-        min_cost = None
-        min_cost_i = 0
-        for index, cost in enumerate(costs):
-            if min_cost is None or cost < min_cost:
-                min_cost = cost
-                min_cost_i = index
-        points_result[tn] = points[min_cost_i]
-        # print(min_cost_i)
-        # print (min_cost)
+            delta = 0
+            ind = 0
+            # while True:
+            costs = np.zeros(total_variations)
+            costs_details = np.zeros((total_variations, 3))
+            while ind < 8:
+                ind += 1
+                if not single:
+                    for index, point_set in enumerate(points):
+                        points[index], costs[index], costs_details[index] = fit(sobel, point_set, pca_data[tn], stds[tn], delta, sobel_vectors[imn-1], gradients)
+                else:
+                    points[0], costs[0], costs_details[0] = fit(sobel, points[0], pca_data[tn], stds[tn], delta,
+                                                      sobel_vectors[imn - 1], gradients)
+                # print ("\n")
+                # update(homo_image, gradients, points, "test", costs, costs_details)
+                # cv2.waitKey()
+                if delta < 0.6:
+                    delta += 0.1
+                # if ind%15 == 0:
+                #     delta = 1
+                # else:
+                #     delta = 0
+            min_cost = None
+            min_cost_i = 0
+            for index, cost in enumerate(costs):
+                if min_cost is None or cost < min_cost:
+                    min_cost = cost
+                    min_cost_i = index
+            points_result[tn] = points[min_cost_i]
+            # print(min_cost_i)
+            # print (min_cost)
 
 
-        if not single:
-            for index in range(0, len(costs)):
-                if index != min_cost_i:
-                    points[index,:,:] = 0
-        # update(homo_image, gradients, points, "test", costs, costs_details)
-        # key = cv2.waitKey()
-        # if key == ord('r'):
-        #     continue
-        tn += 1
-
-    update(homo_image, gradients, points_result, "test")
-    cv2.waitKey()
+            if not single:
+                for index in range(0, len(costs)):
+                    if index != min_cost_i:
+                        points[index,:,:] = 0
+            # update(homo_image, gradients, points, "test", costs, costs_details)
+            # key = cv2.waitKey()
+            # if key == ord('r'):
+            #     continue
+            tn += 1
+        print("Done!\n\n")
+        update(homo_image, gradients, points_result, "test")
+        cv2.waitKey()
 main()
