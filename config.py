@@ -28,6 +28,8 @@ SEGMENT_FILE_TEMPLATE = "{image}-{tooth_number}.png"
 OUTPUT_DIR = "/output/"
 ALWAYS_SHOW_IMAGES = False
 
+DISPLAY_SCALE = 0.75
+
 # Radiography processing variables
 REPROCESS_IMAGES = False
 IMAGE_BIT_DEPTH = 256

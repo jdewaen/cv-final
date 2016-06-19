@@ -78,6 +78,6 @@ def display_single_image(image, filename=None, scale=1):
     if filename is not None:
         save_image(image, filename)
     if filename is None or ALWAYS_SHOW_IMAGES:
-        cv2.imshow('img', cv2.resize(image, (0, 0), fx=scale, fy=scale))
+        cv2.imshow('img', cv2.resize(image, (0, 0), fx=scale*DISPLAY_SCALE, fy=scale*DISPLAY_SCALE))
         cv2.waitKey()
         cv2.destroyWindow("img")

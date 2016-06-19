@@ -35,7 +35,7 @@ def update(homo_image, gradients, all_points, window, scores=None, details=None)
             cv2.putText(gradients_copy, str(int(0.1*details[index, 1])), (150, 25 + index*20), cv2.FONT_HERSHEY_PLAIN, 1, hsv_to_bgr(hue, 1, 1))
             cv2.putText(gradients_copy, str(int(0.1*details[index, 2])), (200, 25 + index*20), cv2.FONT_HERSHEY_PLAIN, 1, hsv_to_bgr(hue, 1, 1))
         hue += 1.0 / (len(all_points) + 1)
-    cv2.imshow(window, np.hstack([homo_copy, gradients_copy]))
+    cv2.imshow(window, cv2.resize(np.hstack([homo_copy, gradients_copy]), (0, 0), fx=DISPLAY_SCALE, fy=DISPLAY_SCALE))
 
 
 def point_dist(point1, point2):
@@ -184,7 +184,7 @@ def fit(sobel, points, pca_data, stds, delta, vects, nbh):
     cost = np.zeros(3)
     total_cost = 0
     for index, point in enumerate(points):
-        x, y = point
+        x, y = np.int32(point)
         if index == len(points) - 1:
             next_point = points[0]
         else:
