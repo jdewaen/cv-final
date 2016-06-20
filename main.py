@@ -266,7 +266,8 @@ def main():
     print("Processing radiographs...")
     crop_offsets, sobel_vectors = radiograph.process_radiographs()
     print("\n")
-    for imn in range(1, TOTAL_RADIO_AMOUNT):
+    for imn in range(1, TOTAL_RADIO_AMOUNT + 1):
+
         print("Fitting for image " + str(imn) + ":")
         print("Importing data...")
         homo_image = cv2.imread(HOMOMORPHIC_DIR + str(imn) + ".png")
@@ -284,10 +285,10 @@ def main():
         total_variations = pca_variations * rotation_variations * position_variations
         points_result = np.zeros((TEETH_AMOUNT, POINTS_AMOUNT, 2))
 
-        update(homo_image, gradients, [starting_positions], "test")
+        update(homo_image, gradients, [starting_positions[0:4], starting_positions[4:8]], "test")
         cv2.waitKey()
         cv2.destroyAllWindows()
-
+        
         print("Initialized!")
         # Tooth loop
         tn = 0
