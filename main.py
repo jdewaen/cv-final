@@ -173,7 +173,7 @@ def normalize_map(raw):
     return raw
 
 def fit(sobel, points, pca_data, stds, delta, vects, nbh):
-    d = 5
+    d = 6
     alpha = .2  # tension 0.2
     beta = .3  # stiffness 0.3
     gamma = 2.5  # sensitivity
@@ -282,7 +282,7 @@ def main():
         single = False
         pca_variations = 3
         rotation_variations = 3
-        position_variations = 3
+        position_variations = 5
         total_variations = pca_variations * rotation_variations * position_variations
         points_result = np.zeros((TEETH_AMOUNT, POINTS_AMOUNT, 2))
 
@@ -327,8 +327,8 @@ def main():
                     mult = (index % 3) - 1
                     points[index] = landmarks.rotate_landmarks(point_set, mult*1.5*angle_stats[tn][1])
             for index in range(0, total_variations):
-                mult = ((index / (total_variations / position_variations)) % position_variations) - 1
-                points[index] += (12*mult + cx, cy)
+                mult = ((index / (total_variations / position_variations)) % position_variations) - 2
+                points[index] += (8*mult + cx, cy)
             # points[:] += (cx, cy)
             # update(homo_image, gradients, points, "test")
             # cv2.waitKey()
@@ -346,8 +346,8 @@ def main():
                     points[0], costs[0], costs_details[0] = fit(sobel, points[0], pca_data[tn], stds[tn], delta,
                                                       sobel_vectors[imn - 1], gradients)
                 # print ("\n")
-                update(homo_image, gradients, points, "test", costs, costs_details)
-                cv2.waitKey()
+                # update(homo_image, gradients, points, "test", costs, costs_details)
+                # cv2.waitKey()
                 if delta < 0.8:
                     delta += 0.1
                 # if ind%15 == 0:
@@ -369,8 +369,8 @@ def main():
                 for index in range(0, len(costs)):
                     if index != min_cost_i:
                         points[index,:,:] = 0
-            update(homo_image, gradients, points, "test", costs, costs_details)
-            key = cv2.waitKey()
+            # update(homo_image, gradients, points, "test", costs, costs_details)
+            # key = cv2.waitKey()
             # if key == ord('r'):
             #     continue
             tn += 1
