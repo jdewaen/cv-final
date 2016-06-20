@@ -289,7 +289,6 @@ def main():
         update(homo_image, gradients, [starting_positions[0:4], starting_positions[4:8]], "test")
         cv2.waitKey()
         cv2.destroyAllWindows()
-
         print("Initialized!")
         # Tooth loop
         tn = 0
