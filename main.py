@@ -156,6 +156,7 @@ def calculate_direction(vects, prev, next, matrix_center, d, nbh):
     result = (np.multiply(perp_prev[:, :, 0], vects[:, :, 0]) + np.multiply(perp_prev[:, :, 1], vects[:, :, 1]))
     # result += np.ones(result.shape)
     result = np.multiply(nbh, result)
+    result += nbh
     # result = np.multiply(nbh, result)
     # test1 = radiograph.generate_gradient_from_vectors(nbh, perp_prev)
     # test2 = radiograph.generate_gradient_from_vectors(nbh, vects)
@@ -172,10 +173,10 @@ def normalize_map(raw):
     return raw
 
 def fit(sobel, points, pca_data, stds, delta, vects, nbh):
-    d = 7
+    d = 5
     alpha = .2  # tension 0.2
     beta = .3  # stiffness 0.3
-    gamma = 1.0  # sensitivity
+    gamma = 2.5  # sensitivity
 
     new_points = np.zeros(points.shape)
     cost_map = []
@@ -288,7 +289,7 @@ def main():
         update(homo_image, gradients, [starting_positions[0:4], starting_positions[4:8]], "test")
         cv2.waitKey()
         cv2.destroyAllWindows()
-        
+
         print("Initialized!")
         # Tooth loop
         tn = 0
@@ -327,11 +328,11 @@ def main():
                     points[index] = landmarks.rotate_landmarks(point_set, mult*1.5*angle_stats[tn][1])
             for index in range(0, total_variations):
                 mult = ((index / (total_variations / position_variations)) % position_variations) - 1
-                points[index] += (10*mult + cx, cy)
+                points[index] += (12*mult + cx, cy)
             # points[:] += (cx, cy)
             # update(homo_image, gradients, points, "test")
             # cv2.waitKey()
-            delta = 0
+            delta = 0.2
             ind = 0
             # while True:
             costs = np.zeros(total_variations)
@@ -345,9 +346,9 @@ def main():
                     points[0], costs[0], costs_details[0] = fit(sobel, points[0], pca_data[tn], stds[tn], delta,
                                                       sobel_vectors[imn - 1], gradients)
                 # print ("\n")
-                # update(homo_image, gradients, points, "test", costs, costs_details)
-                # cv2.waitKey()
-                if delta < 0.6:
+                update(homo_image, gradients, points, "test", costs, costs_details)
+                cv2.waitKey()
+                if delta < 0.8:
                     delta += 0.1
                 # if ind%15 == 0:
                 #     delta = 1
@@ -368,8 +369,8 @@ def main():
                 for index in range(0, len(costs)):
                     if index != min_cost_i:
                         points[index,:,:] = 0
-            # update(homo_image, gradients, points, "test", costs, costs_details)
-            # key = cv2.waitKey()
+            update(homo_image, gradients, points, "test", costs, costs_details)
+            key = cv2.waitKey()
             # if key == ord('r'):
             #     continue
             tn += 1
