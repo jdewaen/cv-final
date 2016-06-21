@@ -12,20 +12,20 @@ USE_MIRRORED = True
 
 # Importing variables
 WORKING_DIR = os.path.dirname(__file__)
-RADIO_DIR = "/Radiographs/"
+RADIO_DIR = WORKING_DIR + "/Radiographs/"
 RADIO_EXTRA_DIR = "extra/"
 RADIO_FILE_TEMPLATE = "{image}.tif"
 
-LANDMARK_DIR = "/Landmarks/"
+LANDMARK_DIR = WORKING_DIR + "/Landmarks/"
 LANDMARK_DEFAULT_DIR = "original/"
 LANDMARK_MIRRORED_DIR = "mirrored/"
 LANDMARK_FILE_TEMPLATE = "landmarks{image}-{tooth_number}.txt"
 
-SEGMENT_DIR = "/Segmentations/"
+SEGMENT_DIR = WORKING_DIR + "/Segmentations/"
 SEGMENT_FILE_TEMPLATE = "{image}-{tooth_number}.png"
 
 # Image output directory
-OUTPUT_DIR = "/output/"
+OUTPUT_DIR = WORKING_DIR + "/output/"
 ALWAYS_SHOW_IMAGES = False
 
 DISPLAY_SCALE = 1

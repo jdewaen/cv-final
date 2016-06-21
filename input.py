@@ -3,7 +3,7 @@ from config import *
 
 
 def import_landmarks(image, tooth_number, mirrored=False):
-    directory = WORKING_DIR + LANDMARK_DIR
+    directory = LANDMARK_DIR
     if mirrored:
         directory += LANDMARK_MIRRORED_DIR
         image += PROCESSED_RADIO_AMOUNT
@@ -33,7 +33,7 @@ def import_landmarks_for_image(image):
 
 
 def import_radiograph(image):
-    directory = WORKING_DIR + RADIO_DIR
+    directory = RADIO_DIR
     if image > 14:
         directory += RADIO_EXTRA_DIR
     image_str = str(image)
@@ -46,7 +46,7 @@ def import_radiograph(image):
 
 
 def import_single_segmentation(image, tooth_number):
-    directory = WORKING_DIR + SEGMENT_DIR
+    directory = SEGMENT_DIR
     image_str = str(image)
     if len(image_str) < 2:
         image_str = "0" + image_str

@@ -21,7 +21,7 @@ def onclick(event, x, y, flags, param):
         cy = y
 
 
-def update(homo_image, gradients, all_points, window, scores=None, details=None):
+def update(homo_image, gradients, all_points, window, scores=None, details=None, save=None):
     homo_copy = np.copy(homo_image)
     gradients_copy = np.copy(gradients)
     hue = 0
@@ -35,7 +35,10 @@ def update(homo_image, gradients, all_points, window, scores=None, details=None)
             cv2.putText(gradients_copy, str(int(0.1*details[index, 1])), (150, 25 + index*20), cv2.FONT_HERSHEY_PLAIN, 1, hsv_to_bgr(hue, 1, 1))
             cv2.putText(gradients_copy, str(int(0.1*details[index, 2])), (200, 25 + index*20), cv2.FONT_HERSHEY_PLAIN, 1, hsv_to_bgr(hue, 1, 1))
         hue += 1.0 / (len(all_points) + 1)
-    cv2.imshow(window, cv2.resize(np.hstack([homo_copy, gradients_copy]), (0, 0), fx=DISPLAY_SCALE, fy=DISPLAY_SCALE))
+    # cv2.imshow(window, cv2.resize(np.hstack([homo_copy, gradients_copy]), (0, 0), fx=DISPLAY_SCALE, fy=DISPLAY_SCALE))
+    if save is not None:
+        display_single_image(homo_copy, "tooth_result_overlay_" + save)
+    # cv2.imshow(window, cv2.resize(homo_copy, (0, 0), fx=DISPLAY_SCALE, fy=DISPLAY_SCALE))
 
 
 def point_dist(point1, point2):
@@ -286,9 +289,9 @@ def main():
         total_variations = pca_variations * rotation_variations * position_variations
         points_result = np.zeros((TEETH_AMOUNT, POINTS_AMOUNT, 2))
 
-        update(homo_image, gradients, [starting_positions[0:4], starting_positions[4:8]], "test")
-        cv2.waitKey()
-        cv2.destroyAllWindows()
+        # update(homo_image, gradients, [starting_positions[0:4], starting_positions[4:8]], "test")
+        # cv2.waitKey()
+        # cv2.destroyAllWindows()
         print("Initialized!")
         # Tooth loop
         tn = 0
@@ -374,6 +377,7 @@ def main():
             #     continue
             tn += 1
         print("Done!\n\n")
-        update(homo_image, gradients, points_result, "test")
-        cv2.waitKey()
+        update(homo_image, gradients, points_result, "test", save=str(imn))
+        # cv2.waitKey()
+
 main()
