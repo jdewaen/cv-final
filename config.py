@@ -31,7 +31,7 @@ ALWAYS_SHOW_IMAGES = False
 DISPLAY_SCALE = 1
 
 # Radiography processing variables
-REPROCESS_IMAGES = False
+REPROCESS_IMAGES = True
 IMAGE_BIT_DEPTH = 256
 
 X_CROP_RATIO = 0.25
