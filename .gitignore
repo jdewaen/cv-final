@@ -77,3 +77,5 @@ old processed/
 *.mtc1
 *.out
 *.synctex.gz
+
+old output/

@@ -372,7 +372,7 @@ def main():
             cts = np.int32(cts)
             cts = [cts]
             cv2.drawContours(mask, cts, -1, (255, 255, 255), thickness=-1)
-            display_single_image(mask, "segments/" + str(imn) + "-" + str(i))
+            save_image(mask, "segmentation-" + str(imn) + "-" + str(i))
         if imn <= PROCESSED_RADIO_AMOUNT:
             sum_matching = 0
             sum_total = 0
