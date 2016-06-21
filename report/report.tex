@@ -184,6 +184,115 @@ Another important weakness is determining the initial Y coordinates of the teeth
  \caption{The left image shows the effect of blobs and smudges on the vertical initial positions of the two outer top teeth. The middle image shows 2 bottom teeth overlapping as well as some serious issue with the top teeth because of the irregular shapes. The image on the right shows more effects from smudges on the bottom row as well as the impact of irregular teeth on the top row. }
 \end{figure}
 
+\section{Tests}
+To test the algorithm, I have decided to build the Active Shape Models with one of each of the 14 complete datasets left out. This model is then used to test the accuracy of the model for that specific dataset. To measure the accuracy, the percentage of overlap between the ground truth model and the result of my algorithm. This percentage is calculated by dividing the area where the models overlap by the total area of the two models combined.
+
+\begin{figure}[!h]
+\centering
+\begin{tabular}{r|l}
+image number & Overlap ( \%) \\
+\hline
+1 & 80.7	\\
+2 & 71.7	\\
+3 & 74.1	\\
+4 & 74.2	\\
+5 & 26.3	\\
+6 & 86.5	\\
+7 & 76.5	\\
+8 & 76.5	\\
+9 & 48.6	\\
+10 & 43.5	\\
+11 & 81.0	\\
+12 & 69.7	\\
+13 & 63.3	\\
+14 & 77.3	\\
+\hline
+average & 67.7
+\end{tabular}
+\end{figure}
+
+\begin{figure}
+\captionsetup[subfigure]{labelformat=empty}
+\begin{subfigure}{.33\textwidth}
+\centering
+\includegraphics[width=50mm]{tooth_result_overlay_1.png}
+\caption{Radiograph 1: 80.7\%}
+\end{subfigure}%
+\begin{subfigure}{.33\textwidth}
+\centering
+\includegraphics[width=50mm]{tooth_result_overlay_2.png}
+\caption{Radiograph 2: 71.7\%}
+\end{subfigure}%
+\begin{subfigure}{.33\textwidth}
+\centering
+\includegraphics[width=50mm]{tooth_result_overlay_3.png}
+\caption{Radiograph 3: 74.1\%}
+\end{subfigure}%
+
+\begin{subfigure}{.33\textwidth}
+\centering
+\includegraphics[width=50mm]{tooth_result_overlay_4.png}
+\caption{Radiograph 4: 74.2\%}
+\end{subfigure}%
+\begin{subfigure}{.33\textwidth}
+\centering
+\includegraphics[width=50mm]{tooth_result_overlay_5.png}
+\caption{Radiograph 5: 26.3\%}
+\end{subfigure}%
+\begin{subfigure}{.33\textwidth}
+\centering
+\includegraphics[width=50mm]{tooth_result_overlay_6.png}
+\caption{Radiograph 6: 86.5\%}
+\end{subfigure}%
+
+\begin{subfigure}{.33\textwidth}
+\centering
+\includegraphics[width=50mm]{tooth_result_overlay_7.png}
+\caption{Radiograph 7: 76.5\%}
+\end{subfigure}%
+\begin{subfigure}{.33\textwidth}
+\centering
+\includegraphics[width=50mm]{tooth_result_overlay_8.png}
+\caption{Radiograph 8: 48.6\%}
+\end{subfigure}%
+\begin{subfigure}{.33\textwidth}
+\centering
+\includegraphics[width=50mm]{tooth_result_overlay_9.png}
+\caption{Radiograph 9: 43.5\%}
+\end{subfigure}%
+
+\end{figure}
+
+\begin{figure}
+\captionsetup[subfigure]{labelformat=empty}
+ \begin{subfigure}{.33\textwidth}
+\centering
+\includegraphics[width=50mm]{tooth_result_overlay_10.png}
+\caption{Radiograph 10: 74.8\%}
+\end{subfigure}%
+\begin{subfigure}{.33\textwidth}
+\centering
+\includegraphics[width=50mm]{tooth_result_overlay_11.png}
+\caption{Radiograph 11: 81.0\%}
+\end{subfigure}%
+\begin{subfigure}{.33\textwidth}
+\centering
+\includegraphics[width=50mm]{tooth_result_overlay_12.png}
+\caption{Radiograph 12: 69.7\%}
+\end{subfigure}%
+
+\begin{subfigure}{.33\textwidth}
+\centering
+\includegraphics[width=50mm]{tooth_result_overlay_13.png}
+\caption{Radiograph 13: 63.3\%}
+\end{subfigure}%
+\begin{subfigure}{.33\textwidth}
+\centering
+\includegraphics[width=50mm]{tooth_result_overlay_14.png}
+\caption{Radiograph 14: 77.3\%}
+\end{subfigure}%
+\end{figure}
+
 \section{Conclusion}
 Overall, my solution provides a solid foundation but can still be improved upon in many ways. Given more time and data, there is still a lot that can be gained by improving the preprocessing, initial positions and the fitting algorithm. The algorithm to determine the initial positions was by far the hardest to get working at a reasonable level. A large amount of constants needed to be finely tuned. On a larger scale this would probably be a lot easier to do with a convolutional neural network, given a large training dataset. While the final preprocessing flow is fairly simple, I spent a lot of time trying to tease out the information I needed from the input radiographs. While the result is good enough for most radiographs right now, I am not completely satisfied with the result. There is still a lot of noise and the constrast is simply too low in certain radiographs, making the algorithm fail entirely. \\ On a whole, this has been a very interesting problem to work on. I have learned a lot from this project.
 \bibliography{bib} 

@@ -24,21 +24,21 @@ def onclick(event, x, y, flags, param):
 def update(homo_image, gradients, all_points, window, scores=None, details=None, save=None):
     homo_copy = np.copy(homo_image)
     gradients_copy = np.copy(gradients)
-    hue = 0
+    hue = 1.0 / (len(all_points) + 2)
     for index, point_set in enumerate(all_points):
         for point in point_set:
-            cv2.circle(homo_copy, (int(point[0]), int(point[1])), 1, hsv_to_bgr(hue, 1, 1), 2)
+            cv2.circle(homo_copy, (int(point[0]), int(point[1])), 2, hsv_to_bgr(hue, 1, 1), 4)
             cv2.circle(gradients_copy, (int(point[0]), int(point[1])), 1, hsv_to_bgr(hue, 1, 1), 2)
         if scores is not None:
             cv2.putText(gradients_copy, str(int(0.1*scores[index])), (0, 25 + index*20), cv2.FONT_HERSHEY_PLAIN, 1, hsv_to_bgr(hue, 1, 1))
             cv2.putText(gradients_copy, str(int(0.1*details[index, 0])), (100, 25 + index*20), cv2.FONT_HERSHEY_PLAIN, 1, hsv_to_bgr(hue, 1, 1))
             cv2.putText(gradients_copy, str(int(0.1*details[index, 1])), (150, 25 + index*20), cv2.FONT_HERSHEY_PLAIN, 1, hsv_to_bgr(hue, 1, 1))
             cv2.putText(gradients_copy, str(int(0.1*details[index, 2])), (200, 25 + index*20), cv2.FONT_HERSHEY_PLAIN, 1, hsv_to_bgr(hue, 1, 1))
-        hue += 1.0 / (len(all_points) + 1)
+        hue += 1.0 / (len(all_points) + 2)
     # cv2.imshow(window, cv2.resize(np.hstack([homo_copy, gradients_copy]), (0, 0), fx=DISPLAY_SCALE, fy=DISPLAY_SCALE))
-    if save is not None:
-        display_single_image(homo_copy, "tooth_result_overlay_" + save)
-    # cv2.imshow(window, cv2.resize(homo_copy, (0, 0), fx=DISPLAY_SCALE, fy=DISPLAY_SCALE))
+    # if save is not None:
+        # display_single_image(homo_copy, "tooth_result_overlay_" + save)
+    cv2.imshow(window, cv2.resize(homo_copy, (0, 0), fx=DISPLAY_SCALE, fy=DISPLAY_SCALE))
 
 
 def point_dist(point1, point2):
@@ -265,8 +265,6 @@ def main():
     #     display_side_by_side_landmarks(pca.vary_pca_parameter(0, stds[tn], pca_data[tn]), "modelvar-"+str(tn) + "-0")
     #     display_side_by_side_landmarks(pca.vary_pca_parameter(1, stds[tn], pca_data[tn]), "modelvar-"+str(tn) + "-1")
 
-
-
     print("Processing radiographs...")
     crop_offsets, sobel_vectors = radiograph.process_radiographs()
     print("\n")
@@ -289,8 +287,8 @@ def main():
         total_variations = pca_variations * rotation_variations * position_variations
         points_result = np.zeros((TEETH_AMOUNT, POINTS_AMOUNT, 2))
 
-        # update(homo_image, gradients, [starting_positions[0:4], starting_positions[4:8]], "test")
-        # cv2.waitKey()
+        update(homo_image, gradients, [starting_positions[0:4], starting_positions[4:8]], "test")
+        cv2.waitKey()
         # cv2.destroyAllWindows()
         print("Initialized!")
         # Tooth loop
@@ -347,15 +345,9 @@ def main():
                 else:
                     points[0], costs[0], costs_details[0] = fit(sobel, points[0], pca_data[tn], stds[tn], delta,
                                                       sobel_vectors[imn - 1], gradients)
-                # print ("\n")
-                # update(homo_image, gradients, points, "test", costs, costs_details)
-                # cv2.waitKey()
+
                 if delta < 0.8:
                     delta += 0.1
-                # if ind%15 == 0:
-                #     delta = 1
-                # else:
-                #     delta = 0
             min_cost = None
             min_cost_i = 0
             for index, cost in enumerate(costs):
@@ -363,21 +355,62 @@ def main():
                     min_cost = cost
                     min_cost_i = index
             points_result[tn] = points[min_cost_i]
-            # print(min_cost_i)
-            # print (min_cost)
-
 
             if not single:
                 for index in range(0, len(costs)):
                     if index != min_cost_i:
                         points[index,:,:] = 0
-            # update(homo_image, gradients, points, "test", costs, costs_details)
-            # key = cv2.waitKey()
-            # if key == ord('r'):
-            #     continue
             tn += 1
+
+        # for i, contour in enumerate(points_result):
+        #     full_image = input.import_radiograph(imn)
+        #     mask = np.zeros(full_image.shape)
+        #     cts = np.zeros((len(contour), 1, 2))
+        #     cts[:, 0, :] = contour
+        #     cts[:, 0, 1] += crop_offsets[i][0]
+        #     cts[:, 0, 0] += crop_offsets[i][1]
+        #     cts = np.int32(cts)
+        #     cts = [cts]
+        #     cv2.drawContours(mask, cts, -1, (255, 255, 255), thickness=-1)
+        #     display_single_image(mask, "segments/" + str(imn) + "-" + str(i))
+        if imn <= PROCESSED_RADIO_AMOUNT:
+            sum_matching = 0
+            sum_total = 0
+            for i, contour in enumerate(points_result):
+                mask_self = np.zeros(homo_image.shape)
+                cts = np.zeros((len(contour), 1, 2))
+                cts[:, 0, :] = contour
+                cts = np.int32(cts)
+                cts = [cts]
+                cv2.drawContours(mask_self, cts, -1, (255, 255, 255), thickness=-1)
+
+                mask_ref = np.zeros(homo_image.shape)
+                landms = np.zeros((len(raw_landmarks[imn-1][0][i]), 1, 2))
+                landms[:, 0, :] = raw_landmarks[imn-1][0][i]
+                landms = np.int32(landms)
+                landms[:, 0, 1] -= crop_offsets[imn-1][0]
+                landms[:, 0, 0] -= crop_offsets[imn-1][1]
+                landms = [landms]
+                cv2.drawContours(mask_ref, landms, -1, (255, 255, 255), thickness=-1)
+                cv2.drawContours(homo_image, landms, -1, (0, 0, 255), thickness=2)
+
+                both = cv2.bitwise_and(mask_self, mask_ref)
+                either = cv2.bitwise_or(mask_self, mask_ref)
+                matching = np.sum(both[:, :, 0]) / 255
+                total = np.sum(either[:, :, 0]) / 255
+                sum_matching += matching
+                sum_total += total
+
+            ratio = 1.0 * sum_matching / sum_total
+            print("Ratio: " + str(ratio))
+
+            # display_single_image(mask, "segments/" + str(imn) + "-" + str(i))
+
+        update(homo_image, gradients, points_result, "test")
+        cv2.waitKey()
+
         print("Done!\n\n")
-        update(homo_image, gradients, points_result, "test", save=str(imn))
+
         # cv2.waitKey()
 
 main()
