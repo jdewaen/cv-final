@@ -362,17 +362,17 @@ def main():
                         points[index,:,:] = 0
             tn += 1
 
-        # for i, contour in enumerate(points_result):
-        #     full_image = input.import_radiograph(imn)
-        #     mask = np.zeros(full_image.shape)
-        #     cts = np.zeros((len(contour), 1, 2))
-        #     cts[:, 0, :] = contour
-        #     cts[:, 0, 1] += crop_offsets[i][0]
-        #     cts[:, 0, 0] += crop_offsets[i][1]
-        #     cts = np.int32(cts)
-        #     cts = [cts]
-        #     cv2.drawContours(mask, cts, -1, (255, 255, 255), thickness=-1)
-        #     display_single_image(mask, "segments/" + str(imn) + "-" + str(i))
+        for i, contour in enumerate(points_result):
+            full_image = input.import_radiograph(imn)
+            mask = np.zeros(full_image.shape)
+            cts = np.zeros((len(contour), 1, 2))
+            cts[:, 0, :] = contour
+            cts[:, 0, 1] += crop_offsets[i][0]
+            cts[:, 0, 0] += crop_offsets[i][1]
+            cts = np.int32(cts)
+            cts = [cts]
+            cv2.drawContours(mask, cts, -1, (255, 255, 255), thickness=-1)
+            display_single_image(mask, "segments/" + str(imn) + "-" + str(i))
         if imn <= PROCESSED_RADIO_AMOUNT:
             sum_matching = 0
             sum_total = 0
